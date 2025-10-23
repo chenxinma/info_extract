@@ -1,0 +1,78 @@
+prompt: |
+  你是人力资源服务专业，接受来自客户HR的人员入职、离职的信息。
+  严格按照邮件内容抽取，不要遗漏任何人员信息。
+  请忽略邮件开通的寒暄和邮件结尾的名片信息。
+examples:
+  - fragment: |
+      员工王五将于月底离职，最后雇佣日为2022年11月11日，为非自愿离职（协商解除劳动合同）。请协助办理相关离职事宜。谢谢！
+    extractions:
+      - extraction_class: 姓名
+        extraction_text: 王五
+      - extraction_class: 离职日期
+        extraction_text: 2022年11月11日
+      - extraction_class: 备注
+        extraction_text: 非自愿离职（协商解除劳动合同）
+  - fragment: |
+      从2025/1/1起我们要新增一名全职同事张三，月薪9,999，再麻烦你协助办理社保等相关手续，并和其他同事一样购买基础商业医疗保险。
+    extractions:
+      - extraction_class: 姓名
+        extraction_text: 张三
+      - extraction_class: 入职日期
+        extraction_text: 2025/1/1
+      - extraction_class: 社保基数
+        extraction_text: 9999.00
+  - fragment: |
+      Li Si （李四） 01111 in China Mainland has completed Onboarding. Below is additional information for the employee to enroll employee in work-injury insurance.
+      Onboarding Completion date: 11/11/1999
+      Hire Date: 2025-02-28   
+      Employee Type: Fixed Term (Fixed Term)   
+      Pay Rate Type: Salary   
+      Employee Name (Chinese): Yang, June （李四）   
+      Base Pay: 9,999
+    extractions:
+      - extraction_class: 姓名
+        extraction_text: 李四
+      - extraction_class: 离职日期
+        extraction_text: 11/11/1999
+      - extraction_class: 社保基数
+        extraction_text: 9999.00
+      - extraction_class: 电脑号
+        extraction_text: "01111"
+  - fragment: |
+      *	《劳动合同》解除（辞职）：2029999_DNCP-张三(Zhang San)；
+    extractions:
+      - extraction_class: 姓名
+        extraction_text: 张三
+  - fragment: |
+      CNABB深圳、上海增减员情况如下，请帮忙申报，谢谢。
+      |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+      | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+      | **备注** | **编号** | **员工姓名** | **ACTION TYPE** | **上岗日期** | **最后工作日期** | **公司** | **社保缴费地** | **所属外服** | **社保基数** | **公积金基数** | **身份证号码** | **联系电话** | **民族** | **户口所在地** | **户口性质** | **Contract Start** | **Contract End** | **离职原因****/身份证有效期** |
+      | 2025.11减员，11月无费用 | 00001 | 张三 | Seperation |  | 2025/11/11 | CNABB SZ | 深圳 | 上海外服 |  |  | 440301200001018896 | +86 17745160691 |  |  |  | 2023.04.27 | 2026.04.26 | 双方协商一致解除劳动合同，解除合同(非因劳动者本人意愿中断就业) |
+      | 2025.11减员，11月无费用 | 00002 | 李四 | Retire |  | 2025/11/12 | CNABB SH | 上海 | 上海外服 |  |  | 610101200001014239 | +86 18116178627 |  |  |  | 2012.02.01 | 9999.12.31 | 退休 |
+    extractions:
+      - extraction_class: 姓名
+        extraction_text: 张三
+      - extraction_class: 电脑号
+        extraction_text: "00001"
+      - extraction_class: 离职日期
+        extraction_text: 2025/11/11
+      - extraction_class: 社保缴纳城市
+        extraction_text: 深圳
+      - extraction_class: 证件号码
+        extraction_text: "440301200001018896"
+      - extraction_class: 备注
+        extraction_text: 双方协商一致解除劳动合同，解除合同(非因劳动者本人意愿中断就业)
+      - extraction_class: 姓名
+        extraction_text: 李四
+      - extraction_class: 电脑号
+        extraction_text: "00002"
+      - extraction_class: 离职日期
+        extraction_text: 2025/11/12
+      - extraction_class: 社保缴纳城市
+        extraction_text: 上海
+      - extraction_class: 证件号码
+        extraction_text: "610101200001014239"
+      - extraction_class: 备注
+        extraction_text: 退休
+      
