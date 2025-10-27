@@ -48,6 +48,11 @@ class EMLReader(EmailReader):
             
         except Exception as e:
             logger.error(f"处理eml文件 {eml_file_path.name} 时出错: {str(e)}")
+            # 移动到error目录
+            error_dir = self.source_dir.parent / "error"
+            error_dir.mkdir(exist_ok=True)
+            eml_file_path.rename(error_dir / eml_file_path.name)
+            return None
     
     def _extract_body(self, email_message):
         """

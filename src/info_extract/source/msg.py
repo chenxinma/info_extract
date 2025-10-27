@@ -1,9 +1,12 @@
 import logging
-import os
 from pathlib import Path
+import re
 from typing import Optional
 
+from bs4 import BeautifulSoup
+import chardet
 import extract_msg
+from msg_parser import MsOxMessage
 from markdownify import markdownify as md
 from typing_extensions import Generator
 
@@ -22,7 +25,9 @@ class MSGReader(EmailReader):
         msg_files = list(self.source_dir.glob("*.msg"))
 
         for msg_fp in msg_files:
-            yield self._process_msg_file(msg_fp)
+            result = self._process_msg_file(msg_fp)
+            if result is not None:
+                yield result
 
     def _process_msg_file(self, msg_file_path: Path) -> SourceResult | None:
         """
@@ -30,6 +35,9 @@ class MSGReader(EmailReader):
         
         Args:
             msg_file_path: msg文件路径
+            
+        Returns:
+            SourceResult | None: 处理结果(包含txt文件路径和Excel附件列表)，如果出错则为None
         """
         try:
             # 使用extract-msg处理msg文件
@@ -37,30 +45,43 @@ class MSGReader(EmailReader):
             
             # 提取正文（优先获取HTML，然后是纯文本）
             body = None
-            if msg_obj.htmlBody:
-                body = md(msg_obj.htmlBody.decode('utf-8', errors='ignore'))
-            if not body and msg_obj.body:
-                body = msg_obj.body.decode('utf-8', errors='ignore')  # pyright: ignore[reportAttributeAccessIssue]
-            
+            try:
+                htmlBody = msg_obj.htmlBody
+                if not htmlBody:
+                    body = msg_obj.body.decode('utf-8', errors='ignore')  # pyright: ignore[reportAttributeAccessIssue, reportOptionalMemberAccess]
+                else:
+                    body = md(htmlBody.decode('utf-8', errors='ignore'))
+            except UnicodeDecodeError:
+                
+                msg_obj2 = MsOxMessage(msg_file_path)
+                msg_properties = msg_obj2.get_properties()
+                if 'Body' in msg_properties:
+                    body = msg_properties['Body']
+                if 'HtmlBody' in msg_properties:
+                    htmlBody = msg_properties['HtmlBody']
+                    body = md(htmlBody)   
+            finally:
+                msg_obj.close()
+
+
             # 保存为txt文件
             text_file = self._save_text_file(body, msg_file_path.stem)   # pyright: ignore[reportArgumentType]
             
+            msg_obj = extract_msg.Message(msg_file_path)
             # 提取并保存Excel附件
             attachments = self._extract_excel_attachments_from_msg(msg_obj, msg_file_path.stem)
-            
+
             logger.info(f"成功处理msg文件: {msg_file_path.name}")
             return text_file, attachments
-            
+
         except Exception as e:
             logger.error(f"处理msg文件 {msg_file_path.name} 时出错: {str(e)}")
-            # 如果msg-parser无法处理，则尝试按文本文件处理
-            try:
-                with open(msg_file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                    body = f.read()
-                self._save_text_file(body, msg_file_path.stem + "_fallback")
-                logger.info(f"回退处理msg文件成功: {msg_file_path.name}")
-            except Exception as fallback_error:
-                logger.error(f"回退处理msg文件 {msg_file_path.name} 时也出错: {str(fallback_error)}")
+            
+            # 移动到error目录
+            error_dir = self.source_dir.parent / "error"
+            error_dir.mkdir(exist_ok=True)
+            msg_file_path.rename(error_dir / msg_file_path.name)
+            return None
     
     def _extract_excel_attachments_from_msg(self, msg_obj: extract_msg.Message, email_filename: str) -> Optional[list[str]]:
         """
@@ -103,4 +124,35 @@ class MSGReader(EmailReader):
             # 返回保存的Excel附件文件名列表
             return saved_attachments
 
-    
+    def _get_html_charset(self, msg):
+        html_body = msg.getSaveHtmlBody(charset='latin-1')
+        # 1. 从 HTML meta 标签提取
+        soup = BeautifulSoup(html_body, "html.parser")
+        meta_tag = soup.find("meta", attrs={"http-equiv": "Content-Type"}) or soup.find("meta", attrs={"charset": True})
+        charset = None
+        if meta_tag:
+            if "http-equiv" in meta_tag.attrs:  # pyright: ignore[reportAttributeAccessIssue]
+                content = meta_tag.get("content", "")  # pyright: ignore[reportAttributeAccessIssue]
+                charset_match = re.search(r'charset=([\w-]+)', content, re.IGNORECASE)  # pyright: ignore[reportCallIssue, reportArgumentType]
+                if charset_match:
+                    charset = charset_match.group(1).strip()
+            else:
+                charset = meta_tag.get("charset", "").strip()  # pyright: ignore[reportAttributeAccessIssue, reportOptionalMemberAccess]
+
+        # 2. 从邮件头提取
+        if not charset:
+            content_type = msg.header.get("Content-Type", "")
+            header_match = re.search(r'charset=([\w-]+)', content_type, re.IGNORECASE)
+            if header_match:
+                charset = header_match.group(1).strip()
+
+        # 3. 自动检测
+        if not charset:
+            if isinstance(html_body, str):
+                html_bytes = html_body.encode("latin-1")
+            else:
+                html_bytes = html_body
+            detected = chardet.detect(html_bytes)
+            charset = detected["encoding"]
+
+        return charset.lower() if charset else "utf-8"  # 默认 utf-8
