@@ -13,7 +13,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from .pipeline import Pipeline
 from .source import EMLReader, MSGReader
-from .extract.plain_extract import PlainExtractor
+from .extract import PlainExtractor, SpreadsheetExtractor
 
 def main():
     """主函数：处理source目录中的邮件文件"""
@@ -37,8 +37,10 @@ def main():
         source=[("eml_reader", EMLReader(source_dir=args.source_dir, processing_dir=args.processing_dir)),
                 ("msg_reader", MSGReader(source_dir=args.source_dir, processing_dir=args.processing_dir))],
         extractors=[
-            # ("plain_extractor", PlainExtractor(processing_dir=args.processing_dir, 
-            #                                    destination_dir=args.destination_dir))
+            ("plain_extractor", PlainExtractor(processing_dir=args.processing_dir, 
+                                               destination_dir=args.destination_dir)),
+            ("spreadsheet_extractor", SpreadsheetExtractor(processing_dir=args.processing_dir, 
+                                                           destination_dir=args.destination_dir))
         ]
     )
     pipeline.run()

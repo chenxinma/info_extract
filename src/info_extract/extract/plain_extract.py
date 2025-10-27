@@ -45,9 +45,9 @@ class PlainExtractor(Step):
         self.destination_dir.mkdir(exist_ok=True)
     
     def run(self) -> Generator[Any, None, None]:
-        _files = []
-        if self.pre_results is not None:
-            _files = [self.processing_dir / f"{pre_result[0]}" for pre_result in self.pre_results]
+        if self.pre_results is None or len(self.pre_results) == 0:
+            return
+        _files = [self.processing_dir / f"{pre_result[0]}" for pre_result in self.pre_results]
         logger.debug("plain extract _files:", _files)
         # 准备文档
         docs = []
