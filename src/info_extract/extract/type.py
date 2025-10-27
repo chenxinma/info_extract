@@ -1,5 +1,9 @@
-from pydantic import BaseModel, Field
+from typing import TypeAlias
+
+from pydantic import BaseModel
+
+ExtractRows: TypeAlias = list[dict[str, str]]
 
 class ExtractResult(BaseModel):
     document: str
-    data: list[dict[str, str]] = Field(default_factory=list)
+    data: ExtractRows

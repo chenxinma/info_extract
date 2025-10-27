@@ -2,25 +2,38 @@ prompt: |
   你是人力资源服务专业，接受来自客户HR的人员入职、离职的信息。
   严格按照邮件内容抽取，不要遗漏任何人员信息。
   请忽略邮件开通的寒暄和邮件结尾的名片信息。
+  ** 注意：** 姓名时保持原始姓名格式，英文或拼音名字不要进行任何修改或翻译。
 examples:
   - fragment: |
-      员工王五将于月底离职，最后雇佣日为2022年11月11日，为非自愿离职（协商解除劳动合同）。请协助办理相关离职事宜。谢谢！
+      员工谢万佳将于月底离职，最后雇佣日为2022年11月11日，为非自愿离职（协商解除劳动合同）。请协助办理相关离职事宜。谢谢！
     extractions:
       - extraction_class: 姓名
-        extraction_text: 王五
+        extraction_text: 谢万佳
+        attributes:
+          line_group: 谢万佳
       - extraction_class: 离职日期
         extraction_text: 2022年11月11日
+        attributes:
+          line_group: 谢万佳
       - extraction_class: 备注
         extraction_text: 非自愿离职（协商解除劳动合同）
+        attributes:
+          line_group: 谢万佳
   - fragment: |
       从2025/1/1起我们要新增一名全职同事张三，月薪9,999，再麻烦你协助办理社保等相关手续，并和其他同事一样购买基础商业医疗保险。
     extractions:
       - extraction_class: 姓名
         extraction_text: 张三
+        attributes:
+          line_group: 张三
       - extraction_class: 入职日期
         extraction_text: 2025/1/1
+        attributes:
+          line_group: 张三
       - extraction_class: 社保基数
         extraction_text: 9999.00
+        attributes:
+          line_group: 张三
   - fragment: |
       Li Si （李四） 01111 in China Mainland has completed Onboarding. Below is additional information for the employee to enroll employee in work-injury insurance.
       Onboarding Completion date: 11/11/1999
@@ -32,12 +45,20 @@ examples:
     extractions:
       - extraction_class: 姓名
         extraction_text: 李四
+        attributes:
+          line_group: 李四
       - extraction_class: 离职日期
         extraction_text: 11/11/1999
+        attributes:
+          line_group: 李四
       - extraction_class: 社保基数
         extraction_text: 9999.00
+        attributes:
+          line_group: 李四
       - extraction_class: 电脑号
         extraction_text: "01111"
+        attributes:
+          line_group: 李四
   - fragment: |
       *	《劳动合同》解除（辞职）：2029999_DNCP-张三(Zhang San)；
     extractions:
@@ -53,26 +74,50 @@ examples:
     extractions:
       - extraction_class: 姓名
         extraction_text: 张三
+        attributes:
+          line_group: 张三
       - extraction_class: 电脑号
         extraction_text: "00001"
+        attributes:
+          line_group: 张三
       - extraction_class: 离职日期
         extraction_text: 2025/11/11
+        attributes:
+          line_group: 张三
       - extraction_class: 社保缴纳城市
         extraction_text: 深圳
+        attributes:
+          line_group: 张三
       - extraction_class: 证件号码
         extraction_text: "440301200001018896"
+        attributes:
+          line_group: 张三
       - extraction_class: 备注
         extraction_text: 双方协商一致解除劳动合同，解除合同(非因劳动者本人意愿中断就业)
+        attributes:
+          line_group: 张三
       - extraction_class: 姓名
         extraction_text: 李四
+        attributes:
+          line_group: 李四
       - extraction_class: 电脑号
         extraction_text: "00002"
+        attributes:
+          line_group: 李四
       - extraction_class: 离职日期
         extraction_text: 2025/11/12
+        attributes:
+          line_group: 李四
       - extraction_class: 社保缴纳城市
         extraction_text: 上海
+        attributes:
+          line_group: 李四
       - extraction_class: 证件号码
         extraction_text: "610101200001014239"
+        attributes:
+          line_group: 李四
       - extraction_class: 备注
         extraction_text: 退休
+        attributes:
+          line_group: 李四
       

@@ -6,9 +6,9 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "chardet>=5.2.0",
+    "extract-msg",
     "langextract>=1.0.9",
     "markdownify>=1.2.0",
-    "msg-parser[rtf]>=1.2.0",
     "openai>=2.6.0",
     "pydantic>=2.12.3",
     "python-dotenv>=1.1.1",

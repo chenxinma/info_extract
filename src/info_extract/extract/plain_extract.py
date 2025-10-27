@@ -2,22 +2,25 @@ import json
 import logging
 import os
 from pathlib import Path
+from typing import Any, List
+from typing_extensions import Generator
 
 from dotenv import load_dotenv
 import langextract as lx
 from langextract.data import AnnotatedDocument
 from tqdm import tqdm
 
+from ..pipeline import Step
+
 from .example import load_examples
 from .qwen import QwenProvider
 from .type import ExtractResult
 
 # 配置日志
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-class PlainExtractor:
-    def __init__(self, processing_dir: str = "processing", destination_dir: str = "dist") -> None:
+class PlainExtractor(Step):
+    def __init__(self, processing_dir: str = "processing", destination_dir: str = "destination") -> None:
         load_dotenv()
         self._model_id = os.environ.get("EXTRACT_MODEL_ID")
         self._api_key = os.environ.get("EXTRACT_API_KEY")
@@ -41,8 +44,11 @@ class PlainExtractor:
         self.processing_dir.mkdir(exist_ok=True)
         self.destination_dir.mkdir(exist_ok=True)
     
-    def extract(self):
-        _files = list(self.processing_dir.glob("*.txt"))
+    def run(self) -> Generator[Any, None, None]:
+        _files = []
+        if self.pre_results is not None:
+            _files = [self.processing_dir / f"{pre_result[0]}" for pre_result in self.pre_results]
+        logger.debug("plain extract _files:", _files)
         # 准备文档
         docs = []
         
@@ -52,34 +58,42 @@ class PlainExtractor:
                 doc = lx.data.Document(content,
                                        document_id=fp.stem)
                 docs.append(doc)
-
-        result = self._fetch(docs)
+    
         # 处理结果
-        if isinstance(result, AnnotatedDocument):
-            result = [result]
+        for extract_result in self.fetch_all(docs):   
+            assert extract_result is not None, "extract_result must not be None"
+            filename = self._save_json(extract_result)
+            yield filename, extract_result
+    
+    def verify(self, pre_result: Any) -> bool:
+        return pre_result[1] is None # 仅对纯文本没有附件
+    
+    def _push_rows(self, result:AnnotatedDocument)->ExtractResult:
+        assert result is not None, "result must not be None"
+        assert result.extractions is not None, "extractions must not be None"
 
-        for r in tqdm(result, desc="信息提取"):
-            data = []
-            extract_result = ExtractResult(document=r.document_id, data=[])
-            for extraction in r.extractions:   # pyright: ignore[reportOptionalIterable]
-                if len(extraction.extraction_text) == 0:
-                    continue
-                
-                data.append({
-                        extraction.extraction_class: extraction.extraction_text, 
-                        'index': extraction.extraction_index,
-                        'group_index': extraction.group_index
-                    })
-            extract_result.data = data
-            self._save_json(extract_result)
+        data = {}
+        for extraction in result.extractions:
+            if len(extraction.extraction_text) == 0:
+                continue
+            line_group:str = \
+                extraction.attributes.get("line_group", None)  # pyright: ignore[reportOptionalMemberAccess, reportAssignmentType]
+            if line_group is None:
+                continue
+            if line_group not in data:
+                data[line_group] = {}
+            data[line_group][extraction.extraction_class] = \
+                extraction.extraction_text
+        return ExtractResult(document=result.document_id, data=list(data.values()))
 
-    def _save_json(self, result: ExtractResult):
-        filename = self.destination_dir / f"{result.document}.json"
+    def _save_json(self, result:ExtractResult):
+        filename = self.destination_dir / f"{result.document[:-14]}.json"
         with open(filename, "w", encoding='utf-8') as fp:
-            json.dump(result.data, fp, ensure_ascii = False, indent=2)
+            json.dump(result.data, fp, ensure_ascii = False, indent=4)
         logger.info(f"已保存文本文件: {filename}")
+        return filename
 
-    def _fetch(self, docs: list[lx.data.Document]):
+    def fetch_all(self, docs: list[lx.data.Document])->Generator[ExtractResult]:
         lx_prompt, examples = load_examples(self.examples_file)
 
         result = lx.extract(
@@ -87,8 +101,14 @@ class PlainExtractor:
                 prompt_description=lx_prompt,
                 examples=examples,
                 model = self.model,
-                max_char_buffer=2000,
+                # extraction_passes=3,     # Multiple passes for improved recall
+                batch_length=20,
+                max_workers=20,            # Parallel processing for speed
+                max_char_buffer=1000,      # Smaller contexts for better accuracy
                 debug=False,
             )
-        return result
-        
+        if isinstance(result, AnnotatedDocument):
+            yield self._push_rows(result)
+        else:
+            for r in tqdm(result, desc="信息提取", total=len(docs)):
+                yield self._push_rows(r)

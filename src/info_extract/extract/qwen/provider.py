@@ -7,13 +7,15 @@ from typing import Any, Iterator, Sequence
 from . import schema as custom_schema
 
 import langextract as lx
+from langextract.core.schema import BaseSchema
+from langextract.core.base_model import BaseLanguageModel
 
 @lx.providers.registry.register(
     r'^qwen',  # Matches Gemini model IDs (same as default provider)
     r'^deepseek',
 )
 @dataclasses.dataclass(init=False)
-class QwenProvider(lx.inference.BaseLanguageModel):
+class QwenProvider(BaseLanguageModel):
     model_id: str
     api_key: str | None
     base_url: str
@@ -70,7 +72,7 @@ class QwenProvider(lx.inference.BaseLanguageModel):
         self._client = OpenAI(api_key=self.api_key, base_url=self.base_url)
 
     @classmethod
-    def get_schema_class(cls) -> type[lx.schema.BaseSchema] | None:
+    def get_schema_class(cls) -> type[BaseSchema] | None:
         """Return our custom schema class.
 
         This allows LangExtract to use our custom schema implementation
@@ -81,7 +83,7 @@ class QwenProvider(lx.inference.BaseLanguageModel):
         """
         return custom_schema.QwenProviderSchema
 
-    def apply_schema(self, schema_instance: lx.schema.BaseSchema | None) -> None:
+    def apply_schema(self, schema_instance: BaseSchema | None) -> None:
         """Apply or clear schema configuration.
 
         This method is called by LangExtract to dynamically apply schema

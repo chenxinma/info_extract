@@ -21,13 +21,14 @@ def load_examples(examples_file: Path) -> Tuple[str, list[lx.data.ExampleData]]:
             extractions = []
             for extr in example["extractions"]:
                 extract = lx.data.Extraction(
-                    extraction_class = extr["extraction_class"],
-                    extraction_text = str(extr["extraction_text"]))
+                    extraction_class = extr["extraction_class"].strip(),
+                    extraction_text = str(extr["extraction_text"]).strip()
+                )
                 if "attributes" in extr:
                     extract.attributes = extr["attributes"]
                 extractions.append(extract)
             examples.append(lx.data.ExampleData(
-                text = example["fragment"],
+                text = example["fragment"].strip(),
                 extractions = extractions
             ))
     return prompt, examples

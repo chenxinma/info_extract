@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from typing import Any, Sequence
+from langextract.core.schema import BaseSchema
 from typing_extensions import Self
 
 import langextract as lx
 
-class QwenProviderSchema(lx.schema.BaseSchema):
+class QwenProviderSchema(BaseSchema):
     """Example custom schema implementation for a provider plugin.
 
     This demonstrates how plugins can provide their own schema implementations

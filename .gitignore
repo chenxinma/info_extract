@@ -8,8 +8,12 @@ wheels/
 
 # Virtual environments
 .venv
+.env
+# log
+/logs/
 
 # io folder
-source/
-destination/
-processing/
+/source/
+/destination/
+/processing/
+
