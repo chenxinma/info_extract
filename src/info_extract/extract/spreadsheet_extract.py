@@ -3,7 +3,7 @@ import logging
 import os
 from pathlib import Path
 import textwrap
-from typing import Any, TypedDict
+from typing import Any, TypedDict, Literal
 
 from dotenv import load_dotenv
 import pandas as pd

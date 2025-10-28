@@ -3,10 +3,32 @@ prompt: |
   严格按照邮件内容抽取，不要遗漏任何人员信息。
   请忽略邮件开通的寒暄和邮件结尾的名片信息。
   ** 注意：** 姓名时保持原始姓名格式，英文或拼音名字不要进行任何修改或翻译。
+  以下是需要抽取的信息项：
+  - 作业：Literal("入职", "离职", "变更")
+  - 证件号码: str # 同义词，例如："身份证号"、"身份证号码"等
+  - 姓名: str # 同义词，例如："Employee Name (Chinese)"、"姓名（中文）"、"员工姓名"等
+  - 客户名称: str # 有些被标注为"公司"
+  - 户籍: str # 同义词，例如："户籍所在地"、"户籍地区"等
+  - 用工模式: Literal("派遣", "商保", "代发")
+  - 入职日期: date # 格式为YYYY-MM-DD 同义词，例如："雇佣日"、"入职日"、"Hire Date"、"上岗日期"等
+  - 合同终止日期: date # 格式为YYYY-MM-DD 同义词，例如："Contract End"、"劳动合同止"等
+  - 离职日期: date # 格式为YYYY-MM-DD 同义词，例如："最后工作日期"等
+  - 社保缴纳城市: str # 同义词，例如："社保缴纳地"、"社保缴纳地区"等
+  - 社保基数: float # 0.00 同义词，例如："基础工资"、"基础薪资"、"Base Pay"、"工资"等
+  - 公积金基数: float # 0.00 同义词，例如："公积金基数"等
+  - 社保最后缴纳月: str # 格式为YYYY-MM 
+  - 公积金最后缴纳月: str # 格式为YYYY-MM 
+  - 成本中心: str # 同义词，例如："Cost Center Name"、"部门"等
+  - 内部工号: str # 同义词，例如："Employee ID"、"员工编号"、"编号"、"工号"等
+  - 备注
 examples:
   - fragment: |
       员工谢万佳将于月底离职，最后雇佣日为2022年11月11日，为非自愿离职（协商解除劳动合同）。请协助办理相关离职事宜。谢谢！
     extractions:
+      - extraction_class: 作业
+        extraction_text: 离职
+        attributes:
+          line_group: 谢万佳
       - extraction_class: 姓名
         extraction_text: 谢万佳
         attributes:
@@ -22,6 +44,10 @@ examples:
   - fragment: |
       从2025/1/1起我们要新增一名全职同事张三，月薪9,999，再麻烦你协助办理社保等相关手续，并和其他同事一样购买基础商业医疗保险。
     extractions:
+      - extraction_class: 作业
+        extraction_text: 入职
+        attributes:
+          line_group: 张三
       - extraction_class: 姓名
         extraction_text: 张三
         attributes:
@@ -34,54 +60,88 @@ examples:
         extraction_text: 9999.00
         attributes:
           line_group: 张三
+      - extraction_class: 公积金基数
+        extraction_text: 9999.00
+        attributes:
+          line_group: 张三
+      - extraction_class: 备注
+        extraction_text: 再麻烦你协助办理社保等相关手续，并和其他同事一样购买基础商业医疗保险。
+        attributes:
+          line_group: 张三
   - fragment: |
       Li Si （李四） 01111 in China Mainland has completed Onboarding. Below is additional information for the employee to enroll employee in work-injury insurance.
-      Onboarding Completion date: 11/11/1999
-      Hire Date: 2025-02-28   
+      Onboarding Completion date: 10/03/2025
+      Hire Date: 2025-02-28
       Employee Type: Fixed Term (Fixed Term)   
       Pay Rate Type: Salary   
-      Employee Name (Chinese): Yang, June （李四）   
+      Employee Name (Chinese): Li Si（李四）   
       Base Pay: 9,999
     extractions:
+      - extraction_class: 作业
+        extraction_text: 入职
+        attributes:
+          line_group: 李四
       - extraction_class: 姓名
         extraction_text: 李四
         attributes:
           line_group: 李四
-      - extraction_class: 离职日期
-        extraction_text: 11/11/1999
+      - extraction_class: 入职日期
+        extraction_text: 2025-02-28
         attributes:
           line_group: 李四
       - extraction_class: 社保基数
         extraction_text: 9999.00
         attributes:
           line_group: 李四
-      - extraction_class: 电脑号
+      - extraction_class: 公积金基数
+        extraction_text: 9999.00
+        attributes:
+          line_group: 李四
+      - extraction_class: 内部工号
         extraction_text: "01111"
         attributes:
           line_group: 李四
   - fragment: |
       *	《劳动合同》解除（辞职）：2029999_DNCP-张三(Zhang San)；
     extractions:
+      - extraction_class: 作业
+        extraction_text: 离职
+        attributes:
+          line_group: 张三
       - extraction_class: 姓名
         extraction_text: 张三
+        attributes:
+          line_group: 张三
+      - extraction_class: 内部工号
+        extraction_text: "2029999"
+        attributes:
+          line_group: 张三
+      - extraction_class: 备注
+        extraction_text: 解除（辞职）
+        attributes:
+          line_group: 张三
   - fragment: |
       CNABB深圳、上海增减员情况如下，请帮忙申报，谢谢。
       |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
       | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
       | **备注** | **编号** | **员工姓名** | **ACTION TYPE** | **上岗日期** | **最后工作日期** | **公司** | **社保缴费地** | **所属外服** | **社保基数** | **公积金基数** | **身份证号码** | **联系电话** | **民族** | **户口所在地** | **户口性质** | **Contract Start** | **Contract End** | **离职原因****/身份证有效期** |
       | 2025.11减员，11月无费用 | 00001 | 张三 | Seperation |  | 2025/11/11 | CNABB SZ | 深圳 | 上海外服 |  |  | 440301200001018896 | +86 17745160691 |  |  |  | 2023.04.27 | 2026.04.26 | 双方协商一致解除劳动合同，解除合同(非因劳动者本人意愿中断就业) |
-      | 2025.11减员，11月无费用 | 00002 | 李四 | Retire |  | 2025/11/12 | CNABB SH | 上海 | 上海外服 |  |  | 610101200001014239 | +86 18116178627 |  |  |  | 2012.02.01 | 9999.12.31 | 退休 |
+      | 2025.10增员 | 00002 | 李四 | Hire | 2025/10/9 |  | CNABB NJ | 南京 | 上海外服 | 17200 | 17200 | 610101200001014239 | +86 19951770387 |  |  |  | 2025.10.09 | 2028.10.08 |  |
     extractions:
+      - extraction_class: 作业
+        extraction_text: 离职
+        attributes:
+          line_group: 张三
       - extraction_class: 姓名
         extraction_text: 张三
         attributes:
           line_group: 张三
-      - extraction_class: 电脑号
+      - extraction_class: 内部工号
         extraction_text: "00001"
         attributes:
           line_group: 张三
       - extraction_class: 离职日期
-        extraction_text: 2025/11/11
+        extraction_text: 2025-11-11
         attributes:
           line_group: 张三
       - extraction_class: 社保缴纳城市
@@ -92,32 +152,52 @@ examples:
         extraction_text: "440301200001018896"
         attributes:
           line_group: 张三
+      - extraction_class: 成本中心
+        extraction_text: CNABB SZ
+        attributes:
+          line_group: 张三
       - extraction_class: 备注
         extraction_text: 双方协商一致解除劳动合同，解除合同(非因劳动者本人意愿中断就业)
         attributes:
           line_group: 张三
+      - extraction_class: 作业
+        extraction_text: 入职
+        attributes:
+          line_group: 李四
       - extraction_class: 姓名
         extraction_text: 李四
         attributes:
           line_group: 李四
-      - extraction_class: 电脑号
+      - extraction_class: 内部工号
         extraction_text: "00002"
         attributes:
           line_group: 李四
-      - extraction_class: 离职日期
-        extraction_text: 2025/11/12
+      - extraction_class: 入职日期
+        extraction_text: 2025-10-09
         attributes:
           line_group: 李四
       - extraction_class: 社保缴纳城市
-        extraction_text: 上海
+        extraction_text: 南京
+        attributes:
+          line_group: 李四
+      - extraction_class: 社保基数
+        extraction_text: 17200.00
+        attributes:
+          line_group: 李四
+      - extraction_class: 公积金基数
+        extraction_text: 17200.00
         attributes:
           line_group: 李四
       - extraction_class: 证件号码
         extraction_text: "610101200001014239"
         attributes:
           line_group: 李四
+      - extraction_class: 成本中心
+        extraction_text: CNABB NJ
+        attributes:
+          line_group: 李四
       - extraction_class: 备注
-        extraction_text: 退休
+        extraction_text: 
         attributes:
           line_group: 李四
       

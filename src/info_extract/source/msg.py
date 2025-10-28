@@ -122,7 +122,10 @@ class MSGReader(EmailReader):
                     continue
             
             # 返回保存的Excel附件文件名列表
-            return saved_attachments
+            if len(saved_attachments) > 0:
+                return saved_attachments
+            else:
+                return None
 
     def _get_html_charset(self, msg):
         html_body = msg.getSaveHtmlBody(charset='latin-1')

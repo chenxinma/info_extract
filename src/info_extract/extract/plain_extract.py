@@ -74,7 +74,7 @@ class PlainExtractor(Step):
 
         data = {}
         for extraction in result.extractions:
-            if len(extraction.extraction_text) == 0:
+            if len(extraction.extraction_text) == 0 or extraction.attributes is None:
                 continue
             line_group:str = \
                 extraction.attributes.get("line_group", None)  # pyright: ignore[reportOptionalMemberAccess, reportAssignmentType]

@@ -37,10 +37,10 @@ def main():
         source=[("eml_reader", EMLReader(source_dir=args.source_dir, processing_dir=args.processing_dir)),
                 ("msg_reader", MSGReader(source_dir=args.source_dir, processing_dir=args.processing_dir))],
         extractors=[
-            # ("plain_extractor", PlainExtractor(processing_dir=args.processing_dir, 
-            #                                    destination_dir=args.destination_dir)),
-            # ("spreadsheet_extractor", SpreadsheetExtractor(processing_dir=args.processing_dir, 
-            #                                                destination_dir=args.destination_dir))
+            ("plain_extractor", PlainExtractor(processing_dir=args.processing_dir, 
+                                               destination_dir=args.destination_dir)),
+            ("spreadsheet_extractor", SpreadsheetExtractor(processing_dir=args.processing_dir, 
+                                                           destination_dir=args.destination_dir))
         ]
     )
     pipeline.run()
