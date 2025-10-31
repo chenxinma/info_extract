@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 import re
-from typing import Optional
+from typing import AsyncGenerator, Optional
 
 from bs4 import BeautifulSoup
 import chardet
@@ -10,7 +10,8 @@ from msg_parser import MsOxMessage
 from markdownify import markdownify as md
 from typing_extensions import Generator
 
-from .email import EmailReader, SourceResult
+from ..pipeline import StepResult
+from .email import EmailReader
 
 
 logger = logging.getLogger(__name__)
@@ -18,18 +19,18 @@ logger = logging.getLogger(__name__)
 class MSGReader(EmailReader):
     """处理msg邮件文件，提取正文内容"""
 
-    def run(self) -> Generator[SourceResult | None, None, None]:
+    async def run(self) -> AsyncGenerator[StepResult, None]:
         """处理source目录下的所有eml和msg文件"""
         # 获取所有msg文件
         
         msg_files = list(self.source_dir.glob("*.msg"))
 
         for msg_fp in msg_files:
-            result = self._process_msg_file(msg_fp)
-            if result is not None:
-                yield result
+            step_result = await self._process_msg_file(msg_fp)
+            if step_result:
+                yield step_result
 
-    def _process_msg_file(self, msg_file_path: Path) -> SourceResult | None:
+    async def _process_msg_file(self, msg_file_path: Path) -> StepResult | None:
         """
         处理单个msg文件
         
@@ -37,7 +38,7 @@ class MSGReader(EmailReader):
             msg_file_path: msg文件路径
             
         Returns:
-            SourceResult | None: 处理结果(包含txt文件路径和Excel附件列表)，如果出错则为None
+            StepResult | None: 处理结果(包含txt文件路径和Excel附件列表)，如果出错则为None
         """
         try:
             # 使用extract-msg处理msg文件

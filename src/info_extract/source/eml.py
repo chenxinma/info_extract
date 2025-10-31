@@ -2,26 +2,28 @@ import email
 from email.header import decode_header
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import AsyncGenerator, Optional
 
 from markdownify import markdownify as md
-from typing_extensions import Generator
 
-from .email import EmailReader, SourceResult
+from ..pipeline import StepResult
+from .email import EmailReader
 
 logger = logging.getLogger(__name__)
 
 class EMLReader(EmailReader):
     """处理eml邮件文件，提取正文内容"""
 
-    def run(self) -> Generator[SourceResult | None, None, None]:
+    async def run(self) -> AsyncGenerator[StepResult, None]:
         eml_files = list(self.source_dir.glob("*.eml"))
         logger.info(f"找到 {len(eml_files)} 个eml文件")
 
         for eml_fp in eml_files:
-            yield self._process_file(eml_fp)
+            step_result = await self._process_file(eml_fp)
+            if step_result:
+                yield step_result
     
-    def _process_file(self, eml_file_path: Path) -> SourceResult | None:
+    async def _process_file(self, eml_file_path: Path) -> StepResult | None:
         """
         处理单个eml文件
         

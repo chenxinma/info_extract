@@ -1,13 +1,11 @@
 from datetime import datetime
 import logging
 from pathlib import Path
-from typing import Optional, Tuple, TypeAlias
 
 from ..pipeline import Step
 
 logger = logging.getLogger(__name__)
 
-SourceResult: TypeAlias = Tuple[str, Optional[list[str]]]
 
 class EmailReader(Step):
     """处理邮件文件，提取正文内容"""

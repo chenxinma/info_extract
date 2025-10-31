@@ -13,7 +13,4 @@ wheels/
 /logs/
 
 # io folder
-/source/
-/destination/
-/processing/
 /error/

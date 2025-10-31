@@ -1,18 +1,21 @@
 import abc
 import logging
-from typing import Any, List, Optional, Tuple, TypeAlias, overload
-from typing_extensions import Generator
+from typing import Any, AsyncGenerator, List, Optional, Tuple, TypeAlias, overload
+
 
 logger = logging.getLogger(__name__)
 
+
+StepResult: TypeAlias = Tuple[str, Optional[Any]]
+
 class Step(abc.ABC):
-    pre_results: List[Any] = []
+    pre_results: List[StepResult] = []
 
     @abc.abstractmethod
-    def run(self) -> Generator[Any, None, None]:
-        pass
+    async def run(self) -> AsyncGenerator[StepResult, None]:
+        yield ("", None)
 
-    def verify(self, pre_result: Any) -> bool:
+    def verify(self, pre_result: StepResult) -> bool:
         return True
 
 StepGroup: TypeAlias = List[Tuple[str, Step]]
@@ -25,7 +28,7 @@ class Pipeline:
         self.extractors = extractors
         self.destination = destination
 
-    def run(self):
+    async def run(self):
         """
         运行所有步骤
         """
@@ -33,7 +36,7 @@ class Pipeline:
         # 运行source步骤
         for name, step in self.source:
             logger.info(f"Running step {name}")
-            for result in step.run():
+            async for result in step.run():
                 source_results.append(result)
 
         extract_results = []
@@ -42,7 +45,7 @@ class Pipeline:
             logger.info(f"Running step {name}")
             pre_enabled_result = [result for result in source_results if step.verify(result)]
             step.pre_results = pre_enabled_result
-            for result in step.run():
+            async for result in step.run():
                 extract_results.append(result)
         
         # 运行destination步骤

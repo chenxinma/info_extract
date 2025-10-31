@@ -1,122 +1,117 @@
 
+import asyncio
 import logging
 import os
 from pathlib import Path
 import textwrap
-from typing import Any, TypedDict, Literal
+from typing import Any, AsyncGenerator, Tuple
 
 from dotenv import load_dotenv
+import duckdb
 import pandas as pd
 from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
-from typing_extensions import Generator
 from tqdm import tqdm
 
-from ..pipeline import Step
+from ..ace import PlaybookManager, curate, reflect
+from ..pipeline import Step, StepResult
 
 # 配置日志
 logger = logging.getLogger(__name__)
 
-class SpreadInfoFile(TypedDict):
-    """
-    表示Excel文件中的一条记录
-    """
-    file_name: Path
-    attachments: list[Path]
+playbookManager = PlaybookManager("./config", "spreadsheet")
 
 class SpreadsheetExtractor(Step):
     """
     从Excel文件中提取数据
     """
-    def __init__(self, processing_dir: str = "processing", destination_dir: str = "destination") -> None:
+    def __init__(self, processing_dir: str = "processing") -> None:
         load_dotenv()
-        self._model_id = os.environ.get("EXTRACT_MODEL_ID")
-        self._api_key = os.environ.get("EXTRACT_API_KEY")
-        self._base_url = os.environ.get("EXTRACT_BASE_URL")
+        self._model_id = os.environ.get("SPREAD_MODEL_ID")
+        self._api_key = os.environ.get("SPREAD_API_KEY")
+        self._base_url = os.environ.get("SPREAD_BASE_URL")
 
         _provider = OpenAIProvider(base_url=self._base_url, api_key=self._api_key)
         _model = OpenAIChatModel(model_name=str(self._model_id), provider=_provider)
         self.agent = Agent(
             model=_model, 
-            instructions=textwrap.dedent("""
-            你是一个数据分析师，你需要根据提供的邮件要求筛选df0 df1 df2...中的数据，生成取数的Python脚本。
-            脚本中需要包含对DataFrame df0 df1 df2...的引用，返回结果为一个DataFrame，命名为result_df。
-            注意：结果仅包含Python脚本
-            """))
+            instructions=self.agent_instructions)
 
         self.processing_dir = Path(processing_dir)
-        self.destination_dir = Path(destination_dir)
     
-    def run(self) -> Generator[Any, None, None]:
+    def agent_instructions(self) -> str:
+        return textwrap.dedent(f"""
+            你是一个数据分析师，你需要根据提供DataFrame中的数据，生成取数的SQL脚本。SQL遵守duckdb的SQL方言。
+            注意：
+            - 结果仅包含SQL脚本
+            - 只要完成列与信息项的映射。
+            """)
+    
+    async def run(self) -> AsyncGenerator[StepResult, None]:
         if self.pre_results is None or len(self.pre_results) == 0:
             return
-        _files: list[SpreadInfoFile] = []
-        if self.pre_results is not None:
-            for pre_result in self.pre_results:
-                f = SpreadInfoFile(file_name=self.processing_dir / f"{pre_result[0]}", 
-                                   attachments=[ fd for fd in pre_result[1] ])
-                _files.append(f)
-    
-        for f in tqdm(_files, desc="信息提取"):
-            mail_body = ""
-            with open(f["file_name"], "r", encoding="utf-8") as mail_file:
-                mail_body = mail_file.read()
-            dfs = self._read_attachements(f["attachments"])
-            prompt = textwrap.dedent(f"""{self._show_dfs(dfs)}
-            根据以上数据，筛选出符合要求的数据。
-            筛选要求的邮件正文：{mail_body}
-            """)
-            result = self.agent.run_sync(prompt)
-            result_df = self._run_python_script(result.output, dfs)
-            if result_df is not None:
-                # 检查result_df是否为空
-                if not result_df.empty:
-                    output_path = self.destination_dir / f"{f['file_name'].stem[:-12]}.json"
-                    result_df.to_json(output_path, 
-                                      orient="records", 
-                                      index=False,
-                                      indent=4,
-                                      force_ascii=False)
-                    yield output_path, result_df
-    
-    def verify(self, pre_result: Any) -> bool:
-        return not pre_result[1] is None # 仅对有附件的邮件进行处理
-    
-    def _show_dfs(self, dfs: dict[str, pd.DataFrame]) -> str:
-        """
-        显示所有DataFrame
-        """
-        dfs_description = "所有的dataframe定义如下:\n"
-        idx = 0
-        for name, df in dfs.items():
-            dfs_description += f"df{idx} # {name}\n{df.head()}\n\n"
-            idx += 1
         
-        return dfs_description
+        if self.pre_results is not None:
+            for sheet_pq, _ in tqdm(self.pre_results, desc="信息表提取"):
+                _sheet_pq_path = Path(sheet_pq)
+                res = await self._fetch_one(_sheet_pq_path)
+                if res:
+                    yield res
 
-    def _read_attachements(self, attachments: list[Path]) -> dict[str, pd.DataFrame]:
-        """
-        读取附件中的Excel文件
-        """
-        _dfs: dict[str, pd.DataFrame] = {}
-        for attachment in attachments:
-            if attachment.suffix.lower() in [".xlsx", ".xls"]:
-                _all_sheets = pd.read_excel(attachment, sheet_name=None)
-                for sheet_name, df in _all_sheets.items():
-                    _dfs[f"{attachment.stem}_{sheet_name}"] = df  # pyright: ignore[reportArgumentType]
-        return _dfs
+    async def _fetch_one(self, sheet_pq_path:Path) -> Tuple[str, Any] | None:
+        raw_df = pd.read_parquet(sheet_pq_path)
+        raw_df = self._clean_columns(raw_df)
+        # 生成取数脚本
+        result = await self.agent.run(
+            textwrap.dedent(f"""
+            {playbookManager.list_playbooks()}
+            df's column names：{raw_df.columns}
+            生成查询 **df** 获取信息项的SQL。
+            """)
+        )
+        try:
+            # 运行取数脚本
+            result_df = self._run_sql(result.output, raw_df)
+            if result_df is None:
+                logger.error(f"没有数据 {sheet_pq_path}")
+                return "", None
 
-    def _run_python_script(self, script: str, dfs: dict[str, pd.DataFrame]) -> Any:
+            # 保存结果
+            result_json = self.processing_dir / f"{sheet_pq_path.stem}.json"
+            result_df.to_json(result_json, 
+                            index=False, 
+                            orient="records", 
+                            force_ascii=False,
+                            indent=4)
+            return str(result_json), len(result_df)
+        except Exception as exp:
+            logger.warning(f"取数异常 {str(exp)}")
+            logger.warning(result.output)
+            ref = await reflect(playbookManager, result.all_messages(), exp)
+            await curate(playbookManager, ref)
+
+    def verify(self, pre_result: StepResult) -> bool:
+        return pre_result[0].endswith(".parquet")
+    
+    def _run_sql(self, sql:str, df: pd.DataFrame) -> pd.DataFrame | None:
         """
-        运行Python脚本
+        运行SQL脚本
         """
-        if script.startswith("```python"):
-            script = script[10:-3]
-        locals = {}
-        # 为每个DataFrame添加到locals中
-        for idx, df in enumerate(dfs.values()):
-            locals[f"df{idx}"] = df
-        logger.debug("script:", script)
-        exec(script, locals=locals)
-        return locals.get("result_df", None)
+        if sql.startswith("```sql"):
+            sql = sql[7:-3]
+        
+        return duckdb.sql(sql).df().copy()
+    
+    def _clean_columns(self, df: pd.DataFrame) -> pd.DataFrame:
+        columns = list(df.columns)
+        _clean_columns = [ self._fix_column(c) for c in columns ]
+        df.columns = _clean_columns
+        return df
+    
+    def _fix_column(self, col: str) -> str:
+        return col.replace('\n', '').replace('\r', '') \
+            .replace('（', '').replace('）', '') \
+            .replace('(', '').replace(')', '') \
+            .replace('"', '').replace('\'', '') \
+            .replace(' ', '').strip()

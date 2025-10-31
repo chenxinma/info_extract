@@ -1,3 +1,3 @@
-from .main import main
+from .main import async_main
 
-__all__ = ["main"]
+__all__ = ["async_main"]

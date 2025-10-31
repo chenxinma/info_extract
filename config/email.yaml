@@ -20,7 +20,7 @@ prompt: |
   - 公积金最后缴纳月: str # 格式为YYYY-MM 
   - 成本中心: str # 同义词，例如："Cost Center Name"、"部门"等
   - 内部工号: str # 同义词，例如："Employee ID"、"员工编号"、"编号"、"工号"等
-  - 备注
+  - 备注: str
 examples:
   - fragment: |
       员工谢万佳将于月底离职，最后雇佣日为2022年11月11日，为非自愿离职（协商解除劳动合同）。请协助办理相关离职事宜。谢谢！
@@ -57,11 +57,11 @@ examples:
         attributes:
           line_group: 张三
       - extraction_class: 社保基数
-        extraction_text: 9999.00
+        extraction_text: 9,999
         attributes:
           line_group: 张三
       - extraction_class: 公积金基数
-        extraction_text: 9999.00
+        extraction_text: 9,999
         attributes:
           line_group: 张三
       - extraction_class: 备注
@@ -90,11 +90,11 @@ examples:
         attributes:
           line_group: 李四
       - extraction_class: 社保基数
-        extraction_text: 9999.00
+        extraction_text: 9,999
         attributes:
           line_group: 李四
       - extraction_class: 公积金基数
-        extraction_text: 9999.00
+        extraction_text: 9,999
         attributes:
           line_group: 李四
       - extraction_class: 内部工号
@@ -141,7 +141,7 @@ examples:
         attributes:
           line_group: 张三
       - extraction_class: 离职日期
-        extraction_text: 2025-11-11
+        extraction_text: 2025/11/11
         attributes:
           line_group: 张三
       - extraction_class: 社保缴纳城市
@@ -173,7 +173,7 @@ examples:
         attributes:
           line_group: 李四
       - extraction_class: 入职日期
-        extraction_text: 2025-10-09
+        extraction_text: 2025/10/9
         attributes:
           line_group: 李四
       - extraction_class: 社保缴纳城市
@@ -181,11 +181,11 @@ examples:
         attributes:
           line_group: 李四
       - extraction_class: 社保基数
-        extraction_text: 17200.00
+        extraction_text: 17200
         attributes:
           line_group: 李四
       - extraction_class: 公积金基数
-        extraction_text: 17200.00
+        extraction_text: 17200
         attributes:
           line_group: 李四
       - extraction_class: 证件号码
