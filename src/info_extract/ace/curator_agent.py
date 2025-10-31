@@ -24,7 +24,7 @@ async def curate(playbookManager:PlaybookManager, reflection: Reflection):
     prompt = f"""
     反思结果：{reflection.model_dump_json(ensure_ascii=False)}
     """
-    await agent.run(prompt, toolsets=[
+    return await agent.run(prompt, toolsets=[
         FunctionToolset(tools=[
             playbookManager.create_playbook,
             playbookManager.overview_playbooks,

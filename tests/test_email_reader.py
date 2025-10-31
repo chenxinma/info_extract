@@ -3,7 +3,7 @@ import unittest
 
 from info_extract.source import EMLReader, MSGReader
 
-class TestEmailReader(unittest.TestCase):
+class TestEmailReader(unittest.IsolatedAsyncioTestCase):
     def _clean_processing_dir(self):
         for root, dirs, files in os.walk('./processing', topdown=False):
             for file in files:
@@ -19,15 +19,15 @@ class TestEmailReader(unittest.TestCase):
                 except Exception:
                     pass
 
-    def setUp(self) -> None:
+    async def asyncSetUp(self) -> None:
         self._clean_processing_dir()
         self.eml_reader = EMLReader(source_dir='./source', processing_dir='./processing')
         self.msg_reader = MSGReader(source_dir='./source', processing_dir='./processing')
-        return super().setUp()
+        
 
     @unittest.skip("跳过EMLReader测试")
-    def test_eml_reader(self):
-        for _ in self.eml_reader.run():
+    async def test_eml_reader(self):
+        async for _ in self.eml_reader.run():
             pass
         excel_files = []
         for root, _, files in os.walk('./processing'):
@@ -36,8 +36,8 @@ class TestEmailReader(unittest.TestCase):
                     excel_files.append(os.path.join(root, file))
         assert len(excel_files) > 0, "未能正确提取Excel文件"
     
-    def test_msg_reader(self):
-        for _ in self.msg_reader.run():
+    async def test_msg_reader(self):
+        async for _ in self.msg_reader.run():
             pass
         excel_files = []
         for root, _, files in os.walk('./processing'):

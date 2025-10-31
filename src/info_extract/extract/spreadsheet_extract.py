@@ -67,6 +67,7 @@ class SpreadsheetExtractor(Step):
             textwrap.dedent(f"""
             {playbookManager.list_playbooks()}
             df's column names：{raw_df.columns}
+            df_sheet_name：{sheet_pq_path.stem}
             生成查询 **df** 获取信息项的SQL。
             """)
         )
@@ -76,20 +77,21 @@ class SpreadsheetExtractor(Step):
             if result_df is None:
                 logger.error(f"没有数据 {sheet_pq_path}")
                 return "", None
-
+            result_df = self._fix_date(result_df)
+            result_df = self._fix_ym(result_df)
             # 保存结果
             result_json = self.processing_dir / f"{sheet_pq_path.stem}.json"
             result_df.to_json(result_json, 
-                            index=False, 
-                            orient="records", 
-                            force_ascii=False,
-                            indent=4)
+                              index=False, 
+                              orient="records", 
+                              force_ascii=False,
+                              indent=4)
             return str(result_json), len(result_df)
         except Exception as exp:
             logger.warning(f"取数异常 {str(exp)}")
             logger.warning(result.output)
             ref = await reflect(playbookManager, result.all_messages(), exp)
-            await curate(playbookManager, ref)
+            _ = await curate(playbookManager, ref)
 
     def verify(self, pre_result: StepResult) -> bool:
         return pre_result[0].endswith(".parquet")
@@ -115,3 +117,28 @@ class SpreadsheetExtractor(Step):
             .replace('(', '').replace(')', '') \
             .replace('"', '').replace('\'', '') \
             .replace(' ', '').strip()
+    
+    def _fix_date(self, df:pd.DataFrame) -> pd.DataFrame:
+        def _tanse_dt(dt):
+            try:
+                return pd.to_datetime(dt).strftime('%Y-%m-%d')
+            except:
+                return dt
+
+        for col in df.columns:
+            if col.endswith("日期"):
+                df[col] = df[col].apply(_tanse_dt)
+        return df
+    
+    def _fix_ym(self, df:pd.DataFrame) -> pd.DataFrame:
+        def _tanse_dt(dt):
+            try:
+                return pd.to_datetime(dt).strftime('%Y-%m')
+            except:
+                return dt
+    
+        for col in df.columns:
+            if col.endswith("月"):
+                df[col] = df[col].apply(_tanse_dt)
+        return df
+    

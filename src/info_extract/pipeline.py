@@ -51,5 +51,7 @@ class Pipeline:
         # 运行destination步骤
         if self.destination:
             for name, step in self.destination:
+                step.pre_results = extract_results
                 logger.info(f"Running step {name}")
-                step.run()
+                async for result in step.run():
+                    logger.info(f"Step {name} result: {result}")

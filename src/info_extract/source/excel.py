@@ -48,6 +48,11 @@ class ExcelReader(Step):
             book = load_workbook(str(excel_file))
             for sheet_name in book.sheetnames:
                 sheet = book[sheet_name]
+                # 检查sheet是否为隐藏状态，如果是则跳过
+                if sheet.sheet_state == 'hidden' or sheet.sheet_state == 'veryHidden':
+                    logger.debug(f"sheet {sheet_name} 是隐藏状态，已跳过处理")
+                    continue
+                
                 header_row = self.find_header_row(sheet, header_candidates=["姓名","身份证"])
                 if header_row == -1:
                     continue
@@ -76,7 +81,7 @@ class ExcelReader(Step):
                 df.to_parquet(parquet_file, index=False)
                 yield str(parquet_file), excel_file.stem
         
-        with open(self.processing_dir / "meta.json", "w", encoding="utf-8") as f:
+        with open(self.processing_dir / "excel_meta", "w", encoding="utf-8") as f:
             json.dump(self.meta_list, f, ensure_ascii=False, indent=4)
         
     def fetch_row_colors(self, sheet, header_row: int, row_count: int) -> list[str]:
@@ -103,11 +108,11 @@ class ExcelReader(Step):
                     if isinstance(cell.fill, PatternFill) and cell.fill.fgColor.rgb:
                         fill_color = cell.fill.fgColor.rgb
                     break
-            row_colors.append(fill_color if fill_color else "无颜色")
+            row_colors.append(fill_color if fill_color else "")
         
         # 确保row_colors长度与row_count一致
         if len(row_colors) < row_count:
-            row_colors.extend(["无颜色"] * (row_count - len(row_colors)))
+            row_colors.extend([""] * (row_count - len(row_colors)))
         elif len(row_colors) > row_count:
             row_colors = row_colors[:row_count]
         

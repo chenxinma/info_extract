@@ -8,6 +8,7 @@ from .extract import PlainExtractor, SpreadsheetExtractor
 from .log_setup import setup_logging
 from .pipeline import Pipeline
 from .source import EMLReader, ExcelReader, MSGReader
+from .destination import ExcelExporter
 # 配置日志
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -45,6 +46,9 @@ async def main():
         extractors=[
             ("plain_extractor", PlainExtractor(processing_dir=processing_dir)),
             ("spreadsheet_extractor", SpreadsheetExtractor(processing_dir=processing_dir))
+        ],
+        destination=[
+            ("excel_exporter", ExcelExporter(processing_dir=processing_dir, destination_dir=destination_dir))
         ]
     )
     await pipeline.run()
