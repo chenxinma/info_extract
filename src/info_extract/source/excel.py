@@ -4,7 +4,8 @@ from pathlib import Path
 from typing import Any, AsyncGenerator, TypedDict
 import warnings
 from openpyxl import load_workbook
-from openpyxl.styles import PatternFill
+from openpyxl.styles.proxy import StyleProxy
+from openpyxl.styles.colors import RGB, COLOR_INDEX
 import pandas as pd
 from typing_extensions import Generator
 
@@ -99,14 +100,17 @@ class ExcelReader(Step):
         # 获取数据行的背景色
         row_colors = []
         # 注意：dataframe的索引从0开始，而Excel行号从1开始，且需要跳过表头行
-        for row_idx in range(header_row + 2, min(header_row + 2 + row_count, sheet.max_row + 1)):
+        for row_idx in range(header_row + 1, min(header_row + 1 + row_count, sheet.max_row + 1)):
             # 获取整行第一个非空单元格的填充色（通常整行颜色一致）
             fill_color = None
             for col_idx in range(1, sheet.max_column + 1):
                 cell = sheet.cell(row=row_idx, column=col_idx)
-                if cell.value is not None and str(cell.value).strip():
-                    if isinstance(cell.fill, PatternFill) and cell.fill.fgColor.rgb:
-                        fill_color = cell.fill.fgColor.rgb
+                if cell.value is not None and str(cell.value).strip():                    
+                    if isinstance(cell.fill, StyleProxy) and cell.fill.fgColor.rgb:
+                        if cell.fill.fgColor.indexed == 64 or cell.fill.fgColor.rgb == "00000000":
+                            continue
+                        
+                        fill_color = str(cell.fill.fgColor.rgb)[2:]
                     break
             row_colors.append(fill_color if fill_color else "")
         

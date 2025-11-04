@@ -87,7 +87,7 @@ class PlainExtractor(Step):
         return ExtractResult(document=result.document_id, data=list(data.values()))
 
     def _save_json(self, result:ExtractResult):
-        filename = self.processing_dir / f"{result.document[:-14]}.json"
+        filename = self.processing_dir / f"{result.document}.json"
         with open(filename, "w", encoding='utf-8') as fp:
             json.dump(result.data, fp, ensure_ascii = False, indent=4)
         logger.info(f"已保存文本文件: {filename}")

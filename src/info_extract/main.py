@@ -23,7 +23,7 @@ async def main():
     """主函数：处理source目录中的邮件文件"""
     # 创建命令行参数解析器
     parser = argparse.ArgumentParser(description='处理指定目录中的邮件文件')
-    parser.add_argument('--work_dir', type=str, required=True, help='工作目录')
+    parser.add_argument('--work-dir', type=str, required=True, help='工作目录')
     
     # 解析命令行参数
     args = parser.parse_args()
