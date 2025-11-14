@@ -3,6 +3,7 @@
 项目使用 uv 做python依赖管理
 - 添加依赖包 `uv add {依赖包}`
 - 程序运行 `uv run {程序入口}`
+- 单元测试 `uv run -m unittest ./tests/xxx.py`
 
 ## 程序示例
 

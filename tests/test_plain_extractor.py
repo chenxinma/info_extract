@@ -12,7 +12,7 @@ logging.get_absl_logger().setLevel(logging.INFO)
 
 class TestPlainExtractor(unittest.TestCase):
     def setUp(self) -> None:
-        self.extractor = PlainExtractor(r"D:\tmp\info_extract\work\processing")
+        self.extractor = PlainExtractor(r"/data/home/macx/work/tmp/processing")
         self.content = textwrap.dedent(r"""
                     Hi Kris,
                     Please be informed that Zhengmao Sheng and Zhenyu (Joanna) Ma will complete their internship with us on 31 July, 2025.  Thank you.
@@ -32,7 +32,7 @@ class TestPlainExtractor(unittest.TestCase):
                     """)
         return super().setUp()
 
-    @unittest.skip("skip test_extract_one")
+    # @unittest.skip("skip test_extract_one")
     def test_extract_one(self):
         doc = lx.data.Document(self.content,
                                 document_id="test")
@@ -42,6 +42,7 @@ class TestPlainExtractor(unittest.TestCase):
             assert extract_result.data is not None, "data must not be None"
             print(extract_result.data)
     
+    @unittest.skip("lang data")
     def test_extract_01(self):
         source = "./tests/DNCP.txt"
         with open(source, 'r', encoding='utf-8') as f:

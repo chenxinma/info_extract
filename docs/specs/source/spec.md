@@ -1,112 +1,62 @@
-# 源规范
+# 标准配置系统文档
 
-## 目的
-源模块负责读取和解析各种文件格式（电子邮件、电子表格），并将它们转换为可由提取模块处理的中间表示。
+## 概述
 
-## 架构
-源模块是处理管道（pipeline）的起始组件，负责扫描源目录中的文件，将它们解析为中间格式，并将结果传递给下游的提取模块。源模块处理三种主要类型的文件：EML邮件、MSG邮件和Excel电子表格。
+新的标准配置系统将所有配置信息集中存储在 `config/standard.db` SQLite数据库中，替代了原来分散在多个文件中的配置方式。
 
-## 需求
+## 数据库结构
 
-### 需求：电子邮件文件处理
-系统应处理EML和MSG格式的电子邮件文件，提取邮件正文和附件。
+数据库包含以下四个表：
 
-#### 场景：处理EML文件
-- 当EML文件被放置在源目录中时
-- 系统提取邮件正文内容（HTML或纯文本）
-- 并将其保存为处理目录中的文本文件
-- 并提取任何Excel附件并保存在子目录中
-- 并将处理结果传递给下游模块
+1. `info_item` - 存储需要抽取的信息项定义
+2. `example` - 存储用于训练AI的示例文本
+3. `extraction` - 存储示例文本中信息项的提取映射
+4. `ext_attribute` - 存储提取项的额外属性
 
-#### 场景：处理MSG文件
-- 当MSG文件被放置在源目录中时
-- 系统提取邮件正文内容（HTML或纯文本）
-- 并将其保存为处理目录中的文本文件
-- 并提取任何Excel附件并保存在子目录中
-- 并将处理结果传递给下游模块
+## 使用方法
 
-#### 场景：邮件正文处理
-- 当提取邮件正文时
-- 系统优先提取HTML格式的内容，如果不存在则提取纯文本
-- 并将HTML内容转换为Markdown格式
-- 并清理邮件正文，移除多余的空白行和空格
+### 1. 读取配置信息
 
-#### 场景：附件处理
-- 当邮件包含附件时
-- 系统识别Excel格式的附件（.xls, .xlsx）
-- 并在处理目录中创建与邮件同名的子目录来保存附件
-- 并为每个附件生成独立的文件路径
+```python
+from src.info_extract.config import ConfigDB
 
-#### 场景：文件名编码
-- 当附件文件名使用编码格式时
-- 系统自动解码文件名以获得正确的文件名
+# Initialize the configuration database
+config_db = ConfigDB()
 
-### 需求：Excel文件处理
-系统应处理Excel文件（XLS/XLSX），提取工作表数据并将其转换为Parquet格式。
+# Get all information items
+info_items = config_db.get_info_items()
 
-#### 场景：处理Excel文件
-- 当Excel文件被放置在源目录中时
-- 系统识别可见工作表（跳过隐藏工作表）
-- 并自动检测标题行
-- 并将工作表数据转换为Parquet格式
-- 并将Parquet文件保存在处理目录中
-- 并为每个工作表生成元数据
+# Get a specific information item by label
+name_item = config_db.get_info_item_by_label("姓名")
 
-#### 场景：标题行检测
-- 当处理Excel工作表时
-- 系统自动扫描前10行以识别标题行
-- 并使用包含"姓名"、"身份证"等关键字的行作为标题行
-- 并过滤掉空值比例过高的行
+# Get all examples
+examples = config_db.get_examples()
+```
 
-#### 场景：数据清理
-- 当处理Excel数据时
-- 系统删除姓名为空的行
-- 并为每行添加颜色信息作为"行颜色"列
+### 2. 生成配置文件
 
-#### 场景：元数据生成
-- 当处理完Excel文件时
-- 系统为每个工作表生成元数据
-- 并将所有元数据保存到`excel_meta`文件中
+系统可以基于数据库内容生成不同格式的配置文件：
 
-### 需求：文件命名
-系统应为处理后的文件生成一致的命名方案。
+```python
+from src.info_extract.config.config_utils import (
+    write_email_yaml, 
+    write_output_yaml, 
+    generate_spreadsheet_configs
+)
 
-#### 场景：文本文件命名
-- 当保存邮件正文为文本文件时
-- 系统使用原始文件名加上时间戳作为新文件名
-- 格式为：`{original_filename}_{timestamp}.txt`
+# Generate email.yaml from database
+write_email_yaml()
 
-#### 场景：Parquet文件命名
-- 当保存Excel工作表为Parquet文件时
-- 系统使用原始文件名和工作表名作为新文件名
-- 格式为：`{excel_filename}_{sheet_name}.parquet`
+# Generate output.yaml from database
+write_output_yaml()
 
-### 需求：错误处理
-系统应优雅地处理文件处理错误。
+# Generate spreadsheet configuration files
+generate_spreadsheet_configs()
+```
 
-#### 场景：损坏的文件
-- 当在处理过程中遇到损坏的文件时
-- 系统将文件移动到错误目录
-- 并记录错误详情
+## 优势
 
-#### 场景：处理异常
-- 当处理文件时发生异常
-- 系统记录详细的错误信息
-- 并继续处理其他文件
-
-#### 场景：编码问题
-- 当遇到文件编码问题时
-- 系统使用错误忽略模式继续处理
-- 并尝试多种方法解码内容
-
-### 需求：目录管理
-系统应正确管理源目录和处理目录。
-
-#### 场景：目录创建
-- 当系统初始化时
-- 系统自动创建源目录和处理目录（如果不存在）
-- 并在需要时创建错误目录
-
-#### 场景：文件移动
-- 当文件处理失败时
-- 系统将文件移动到错误目录以避免重复处理
+1. **统一存储** - 所有配置信息集中在一个数据库中
+2. **易于维护** - 修改配置只需要在数据库中操作
+3. **数据一致性** - 避免了不同配置文件间的不一致
+4. **可扩展性** - 容易添加新的配置项和示例

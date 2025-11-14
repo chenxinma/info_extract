@@ -7,8 +7,8 @@ from info_extract.destination.excel_export import ExcelExporter
 
 class TestExcelExporter(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        processing_dir = r"D:\tmp\info_extract\work\processing"
-        destination_dir = r"D:\tmp\info_extract\work\destination"
+        processing_dir = r"/data/home/macx/work/tmp/processing"
+        destination_dir = r"/data/home/macx/work/tmp/destination"
         self.export = ExcelExporter(
             processing_dir=processing_dir,
             destination_dir=destination_dir

@@ -2,8 +2,9 @@ import json
 import logging
 import os
 from pathlib import Path
+import textwrap
 import time
-from typing import Any, AsyncGenerator
+from typing import AsyncGenerator
 
 from dotenv import load_dotenv
 import langextract as lx
@@ -12,7 +13,7 @@ from tqdm import tqdm
 from typing_extensions import Generator
 
 from ..pipeline import Step, StepResult
-from .example import load_examples
+from ..config import get_examples, generate_info_item_define_prompt
 from .tokenizer import tokenize
 from .type import ExtractResult
 
@@ -27,8 +28,7 @@ class PlainExtractor(Step):
         self._model_id = os.environ.get("EXTRACT_MODEL_ID")
         self._api_key = os.environ.get("EXTRACT_API_KEY")
         self._base_url = os.environ.get("EXTRACT_BASE_URL")
-        self.examples_file = Path(os.environ.get("EXTRACT_EXAMPLES", "./config/email.yaml"))
-
+        
         config = lx.factory.ModelConfig(
             model_id=self._model_id,
             provider="OpenAILanguageModel",
@@ -94,7 +94,17 @@ class PlainExtractor(Step):
         return filename
 
     def fetch_all(self, docs: list[lx.data.Document], debug: bool = False)->Generator[ExtractResult]:
-        lx_prompt, examples = load_examples(self.examples_file)
+        lx_prompt = textwrap.dedent(f"""
+        你是人力资源服务专业，接受来自客户HR的人员入职、离职的信息。
+        严格按照邮件内容抽取，不要遗漏任何人员信息。
+        请忽略邮件开通的寒暄和邮件结尾的名片信息。
+        ** 注意：** 姓名时保持原始姓名格式，英文或拼音名字不要进行任何修        你是人力资源服务专业，接受来自客户HR的人员入职、离职的信息。
+        严格按照邮件内容抽取，不要遗漏任何人员信息。
+        请忽略邮件开通的寒暄和邮件结尾的名片信息。
+        ** 注意：** 姓名时保持原始姓名格式，英文或拼音名字不要进行任何修改或翻译。改或翻译。
+        {generate_info_item_define_prompt()}
+        """)
+        examples = get_examples()
 
         result = lx.extract(
                 text_or_documents=docs,

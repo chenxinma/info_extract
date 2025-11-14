@@ -9,12 +9,12 @@ import pandas as pd
 class TestExcelReader(unittest.TestCase):
     @override
     def setUp(self) -> None:
-        self.excel_reader = ExcelReader(source_dir=r"D:\tmp\info_extract\work\source", 
-                                        processing_dir=r"D:\tmp\info_extract\work\processing")
+        self.excel_reader = ExcelReader(source_dir=r"/data/home/macx/work/tmp/source", 
+                                        processing_dir=r"/data/home/macx/work/tmp/processing")
         return super().setUp()
         
     def test_fetch_row_colors(self):
-        book = load_workbook(r"D:\tmp\info_extract\work\source\达美乐离职申报表-青岛.xlsx")
+        book = load_workbook(r"/data/home/macx/work/tmp/source\达美乐离职申报表-青岛.xlsx")
         sheet = book["2025-10"]
 
         header_row = self.excel_reader.find_header_row(sheet=sheet, header_candidates=['姓名', '身份证'])
@@ -22,7 +22,7 @@ class TestExcelReader(unittest.TestCase):
         print(colors)
     
     def test_fetch_row_colors2(self):
-        book = load_workbook(r"D:\tmp\info_extract\work\source\社保减员附件.xlsx")
+        book = load_workbook(r"/data/home/macx/work/tmp/source\社保减员附件.xlsx")
         sheet = book["0"]
 
         header_row = self.excel_reader.find_header_row(sheet=sheet, header_candidates=['姓名', '身份证'])
@@ -30,7 +30,7 @@ class TestExcelReader(unittest.TestCase):
         print(colors)
     
     def test_get_columns(self):
-        excel_file = r"D:\tmp\info_extract\work\source\达美乐离职申报表-青岛.xlsx"
+        excel_file = r"/data/home/macx/work/tmp/source\达美乐离职申报表-青岛.xlsx"
         sheet_name = "2025-10"
         book = load_workbook(excel_file)
         sheet = book[sheet_name]

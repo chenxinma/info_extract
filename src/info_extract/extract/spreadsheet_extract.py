@@ -1,11 +1,10 @@
-
-import asyncio
 import logging
 import os
 from pathlib import Path
 import textwrap
 from typing import Any, AsyncGenerator, Tuple
 
+import hashlib
 from dotenv import load_dotenv
 import duckdb
 import pandas as pd
@@ -15,6 +14,10 @@ from pydantic_ai.providers.openai import OpenAIProvider
 from tqdm import tqdm
 
 from ..ace import PlaybookManager, curate, reflect
+from ..config import (generate_info_item_define_prompt, 
+                      generate_sample_sql, 
+                      get_cached_mapping_sql, 
+                      save_mapping_sql)
 from ..pipeline import Step, StepResult
 
 # 配置日志
@@ -62,36 +65,50 @@ class SpreadsheetExtractor(Step):
     async def _fetch_one(self, sheet_pq_path:Path) -> Tuple[str, Any] | None:
         raw_df = pd.read_parquet(sheet_pq_path)
         raw_df = self._clean_columns(raw_df)
-        # 生成取数脚本
-        result = await self.agent.run(
-            textwrap.dedent(f"""
-            {playbookManager.list_playbooks()}
-            df's column names：{raw_df.columns}
-            df_sheet_name：{sheet_pq_path.stem}
-            生成查询 **df** 获取信息项的SQL。
-            """)
-        )
-        try:
+
+        hash_key = self._hash_columns(raw_df.columns)
+        cached_sql = get_cached_mapping_sql(hash_key)
+        result_df = None
+        if cached_sql:
             # 运行取数脚本
-            result_df = self._run_sql(result.output, raw_df)
-            if result_df is None:
-                logger.error(f"没有数据 {sheet_pq_path}")
-                return "", None
-            result_df = self._fix_date(result_df)
-            result_df = self._fix_ym(result_df)
-            # 保存结果
-            result_json = self.processing_dir / f"{sheet_pq_path.stem}.json"
-            result_df.to_json(result_json, 
-                              index=False, 
-                              orient="records", 
-                              force_ascii=False,
-                              indent=4)
-            return str(result_json), len(result_df)
-        except Exception as exp:
-            logger.warning(f"取数异常 {str(exp)}")
-            logger.warning(result.output)
-            ref = await reflect(playbookManager, result.all_messages(), exp)
-            _ = await curate(playbookManager, ref)
+            result_df = self._run_sql(cached_sql, raw_df)
+        else:
+            # 生成取数脚本
+            result = await self.agent.run(
+                textwrap.dedent(f"""
+                {generate_info_item_define_prompt()}
+                {playbookManager.list_playbooks()}
+                {generate_sample_sql()}
+                df's column names：{raw_df.columns}
+                df_sheet_name：{sheet_pq_path.stem}
+                生成查询 **df** 获取信息项的SQL。
+                """)
+            )
+            try:
+                # 运行取数脚本
+                result_df = self._run_sql(result.output, raw_df)
+                save_mapping_sql(hash_key, result.output)
+            except Exception as exp:
+                logger.warning(f"取数异常 {str(exp)}")
+                logger.warning(result.output)
+                logger.warning(f"sheet 表头：{raw_df.columns}")
+                ref = await reflect(playbookManager, result.all_messages(), exp)
+                _ = await curate(playbookManager, ref)
+        
+        if result_df is None:
+            logger.error(f"没有数据 {sheet_pq_path}")
+            return "", None
+
+        result_df = self._fix_date(result_df)
+        result_df = self._fix_ym(result_df)
+        # 保存结果
+        result_json = self.processing_dir / f"{sheet_pq_path.stem}.json"
+        result_df.to_json(result_json, 
+                            index=False, 
+                            orient="records", 
+                            force_ascii=False,
+                            indent=4)
+        return str(result_json), len(result_df)
 
     def verify(self, pre_result: StepResult) -> bool:
         return pre_result[0].endswith(".parquet")
@@ -142,3 +159,10 @@ class SpreadsheetExtractor(Step):
                 df[col] = df[col].apply(_tanse_dt)
         return df
     
+    def _hash_columns(self, columns) -> str:
+        _cols = str(columns)
+
+        h = hashlib.sha1()
+        h.update(_cols.encode())
+        return h.hexdigest()
+

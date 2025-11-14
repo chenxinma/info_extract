@@ -2,10 +2,10 @@ import logging
 import os
 import json
 from pathlib import Path
-import yaml
 from openpyxl import Workbook
-from typing import AsyncGenerator, List, Dict, Any, TypeAlias, TypedDict
+from typing import AsyncGenerator, List, Dict, Any, TypedDict
 
+from ..config import output_info_items
 from ..pipeline import Step, StepResult
 from tqdm import tqdm
 
@@ -21,8 +21,8 @@ class ExcelExporter(Step):
         super().__init__()
         self.processing_dir = processing_dir
         self.destination_dir = destination_dir
-        with open("./config/output.yaml", "r", encoding="utf-8") as f:
-            self.columns: List[ColumnDefine] = yaml.safe_load(f)["columns"] 
+        
+        self.columns = output_info_items()
         
         # 确保输出目录存在
         os.makedirs(self.destination_dir, exist_ok=True)
