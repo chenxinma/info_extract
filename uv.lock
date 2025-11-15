@@ -1096,6 +1096,9 @@ requires-dist = [
     { name = "xlrd", specifier = ">=2.0.2" },
 ]
 
+[package.metadata.requires-dev]
+dev = []
+
 [[package]]
 name = "invoke"
 version = "2.2.1"

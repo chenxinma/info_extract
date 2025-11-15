@@ -30,5 +30,12 @@ where = ["src"]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[dependency-groups]
+dev = []
+
 [project.scripts]
 info-extract = "info_extract:async_main"
+
+[[tool.uv.index]]
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+default = true

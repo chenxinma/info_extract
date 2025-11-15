@@ -17,8 +17,6 @@ logger = logging.getLogger(__name__)
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 
-
-
 async def main():
     """主函数：处理source目录中的邮件文件"""
     # 创建命令行参数解析器

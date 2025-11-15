@@ -140,6 +140,15 @@ class ConfigDB:
     
     
     def get_attributes_by_extraction_id(self, extraction_id:int) -> dict[str, str] | None:
+        """
+        Get all attributes for a specific extraction.
+        
+        Args:
+            extraction_id: ID of the extraction
+            
+        Returns:
+            Dictionary of attributes if found, None otherwise
+        """
         conn = None
         try:
             conn = sqlite3.connect(self.db_path)
@@ -166,6 +175,15 @@ class ConfigDB:
                 conn.close()
     
     def get_mapping_sql_by_hash_key(self, hash_key:str) -> str|None:
+        """
+        Get the mapping SQL code for a specific hash key.
+        
+        Args:
+            hash_key: Hash key for the mapping
+            
+        Returns:
+            Mapping SQL code if found, None otherwise
+        """
         conn = None
         try:
             conn = sqlite3.connect(self.db_path)
@@ -187,6 +205,13 @@ class ConfigDB:
                 conn.close()
     
     def save_mapping_sql(self, hash_key:str, sql_code:str):
+        """
+        Save the mapping SQL code to the database.
+        
+        Args:
+            hash_key: Hash key for the mapping
+            sql_code: SQL code for the mapping
+        """
         conn = None
         try:
             conn = sqlite3.connect(self.db_path)
