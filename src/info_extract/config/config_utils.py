@@ -8,14 +8,15 @@ from langextract.data import ExampleData
 
 class ColumnDefine(TypedDict):
     name: str
-    type: str
+    dtype: str
+    describe: str
 
 def output_info_items() -> list[ColumnDefine]:
     """
     提供excel输出的标准表头定义
     """
     config_db = ConfigDB("./config/standard.db")
-    return [ ColumnDefine(name=info.label, type=info.data_type) for info in config_db.get_info_items()]
+    return [ ColumnDefine(name=info.label, dtype=info.data_type, describe=info.describe) for info in config_db.get_info_items()]
 
 def generate_info_item_define_prompt() -> str:
     """
