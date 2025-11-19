@@ -1,6 +1,6 @@
 [project]
 name = "info-extract"
-version = "0.1.0"
+version = "0.1.1"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -10,18 +10,18 @@ dependencies = [
     "duckdb>=1.4.1",
     "extract-msg",
     "fastparquet>=2024.11.0",
-    "jieba",
     "langextract>=1.0.9",
     "markdownify>=1.2.0",
     "msg-parser[rtf]>=1.2.0",
+    "numpy>=2.3.4",
     "openai>=2.6.0",
     "openpyxl>=3.1.5",
+    "pkuseg>=0.0.25",
     "pydantic>=2.12.3",
     "pydantic-ai>=1.6.0",
     "python-dotenv>=1.1.1",
     "regex>=2025.10.23",
     "scikit-learn>=1.7.2",
-    "text2vec>=1.3.7",
     "torch>=2.9.1",
     "transformers>=4.57.1",
     "xlrd>=2.0.2",
@@ -38,6 +38,10 @@ build-backend = "hatchling.build"
 url = "https://pypi.tuna.tsinghua.edu.cn/simple"
 default = true
 
+[tool.uv.extra-build-dependencies]
+pkuseg = ["numpy"]
+
+
 [dependency-groups]
 dev = [
     "modelscope>=1.31.0",
@@ -45,3 +49,4 @@ dev = [
 
 [project.scripts]
 info-extract = "info_extract:async_main"
+

@@ -4,7 +4,7 @@ import logging
 import os
 import sys
 
-from .extract import PlainExtractor, SpreadsheetExtractor
+from .extract import PlainExtractor, SpreadsheetExtractor, DataFrameMappingExtract
 from .log_setup import setup_logging
 from .pipeline import Pipeline
 from .source import EMLReader, ExcelReader, MSGReader
@@ -44,6 +44,7 @@ async def main():
         extractors=[
             ("plain_extractor", PlainExtractor(processing_dir=processing_dir)),
             ("spreadsheet_extractor", SpreadsheetExtractor(processing_dir=processing_dir))
+            # ("spreadsheet_extractor", DataFrameMappingExtract(processing_dir=processing_dir))
         ],
         destination=[
             ("excel_exporter", ExcelExporter(processing_dir=processing_dir, destination_dir=destination_dir))

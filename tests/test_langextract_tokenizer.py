@@ -3,7 +3,7 @@ import unittest
 from info_extract.extract.tokenizer import tokenize
 
 class TestTokenizer(unittest.TestCase):
-    @unittest.skip("skip test_tokenize")
+    # @unittest.skip("skip test_tokenize")
     def test_tokenize(self):
         text = "员工name将于月底离职，最后雇佣日为2022年11月11日，为非自愿离职（协商解除劳动合同）。请协助办理相关离职事宜。谢谢！"
         tokenized = tokenize(text)

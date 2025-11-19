@@ -1,9 +1,10 @@
 from langextract.core import debug_utils
 from langextract.core.tokenizer import CharInterval, Token, TokenType, TokenizedText
 import regex
-import jieba
+import pkuseg
 
-jieba.setLogLevel(jieba.logging.INFO)
+seg = pkuseg.pkuseg() 
+
 # Regex patterns for tokenization.
 _LETTERS_PATTERN = r"[\p{L}]+"
 _DIGITS_PATTERN = r"[\p{Nd}]+"
@@ -33,7 +34,7 @@ def _cjk_tokenize(text: str, start_pos: int = 0, token: Token | None = None) -> 
     previous_end = 0
     if not _CJK_PATTERN.match(text) and token is not None:
         return [token]
-    for token_index, word in enumerate(jieba.cut(text)):
+    for token_index, word in enumerate(seg.cut(text)):
         _sub_start_pos, _sub_end_pos = previous_end, previous_end + len(word)
         # Create a new token.
         token = Token(
