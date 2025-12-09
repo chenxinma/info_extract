@@ -69,6 +69,7 @@ class SpreadsheetExtractor(Step):
         hash_key = self._hash_columns(raw_df.columns)
         cached_sql = get_cached_mapping_sql(hash_key)
         result_df = None
+        
         if cached_sql:
             # 运行取数脚本
             result_df = self._run_sql(cached_sql, raw_df)
@@ -119,6 +120,13 @@ class SpreadsheetExtractor(Step):
         """
         if sql.startswith("```sql"):
             sql = sql[7:-3]
+        
+        _hash_key = self._hash_columns(df.columns)
+        with open(self.processing_dir / f"{_hash_key}.log", "w", encoding="utf-8") as fp:
+            fp.write(sql)
+            fp.write('\n')
+            fp.write('---\n')
+            fp.writelines("\n".join(df.columns))
         
         return duckdb.sql(sql).df().copy()
     
