@@ -4,7 +4,7 @@ Script to start the UI server
 """
 import argparse
 from pathlib import Path
-from info_extract.ui import UI
+from .ui import UI
 
 
 def start_server():

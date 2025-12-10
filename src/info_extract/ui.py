@@ -11,8 +11,8 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List
-import math
 import webbrowser
+from importlib.resources import files
 
 from fastapi import FastAPI, Request, Response
 from fastapi.concurrency import asynccontextmanager
@@ -67,10 +67,10 @@ class UI:
                            description="Web interface for info extract project",
                            lifespan=lifespan)
 
-        # Get the directory of this file to locate the HTML template
-        current_dir = Path(__file__).parent
+ 
         # Navigate to web directory to find the template
-        self.template_dir = current_dir.parent.parent / "web"
+        self.template_dir = Path(__file__).parent / "web"
+        print("template dir", self.template_dir)
 
         # Mount static files
         self.app.mount("/static", StaticFiles(directory=str(self.template_dir)), name="static")
