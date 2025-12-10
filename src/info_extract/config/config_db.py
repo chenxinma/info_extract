@@ -4,7 +4,7 @@ Provides methods to access configuration data stored in the standard.db SQLite d
 """
 import sqlite3
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from .config_models import InfoItem, Example
 from langextract.data import Extraction
@@ -222,3 +222,91 @@ class ConfigDB:
         finally:
             if conn:
                 conn.close()
+    
+    def add_item(self, new_item: InfoItem):
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            cursor.execute("""
+                INSERT INTO info_item (label, describe, data_type, sort_no, sample_col_name)
+                VALUES (?, ?, ?, ?, ?)
+            """, (
+                new_item.label,
+                new_item.describe,
+                new_item.data_type,
+                new_item.sort_no,
+                new_item.sample_col_name
+            ))
+
+            new_id = cursor.lastrowid
+            conn.commit()
+            return new_id
+        finally:
+            if conn:
+                conn.close()
+
+    def update_item(self, item: InfoItem):
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            cursor.execute("""
+                    UPDATE info_item
+                    SET label=?, describe=?, data_type=?, sort_no=?, sample_col_name=?
+                    WHERE id=?
+                """, (
+                    item.label,
+                    item.describe,
+                    item.data_type,
+                    item.sort_no,
+                    item.sample_col_name,
+                    item.id
+                ))
+
+            if cursor.rowcount == 0:
+                return 0
+            conn.commit()
+            return 1
+        finally:
+            if conn:
+                conn.close()
+    
+    def update_items_sort(self, item_orders: List[Dict[str, int]]):
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            for item in item_orders:
+                cursor.execute(
+                    "UPDATE info_item SET sort_no=? WHERE id=?",
+                    (item['sort_no'], item['id'])
+                )
+
+            if cursor.rowcount == 0:
+                return 0
+            conn.commit()
+            return 1
+        finally:
+            if conn:
+                conn.close()
+
+    def delete_item(self, item_id:int):
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            cursor.execute("DELETE FROM info_item WHERE id=?", (item_id,))
+
+            if cursor.rowcount == 0:
+                return 0
+            conn.commit()
+            return 1
+        finally:
+            if conn:
+                conn.close()
+

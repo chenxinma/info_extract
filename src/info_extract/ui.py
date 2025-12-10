@@ -1,22 +1,40 @@
 """
 UI module for the info_extract project.
-Provides a web interface for configuring the info_item table in standard.db.
+Provides a web interface for configuring the info_item table in standard.db and
+managing file processing tasks.
 """
+import logging
+import os
+import json
+from threading import Timer
+import uuid
+from datetime import datetime
 from pathlib import Path
+from typing import Dict, List
+import math
+import webbrowser
 
-from flask import Flask, request, jsonify, send_from_directory
+from fastapi import FastAPI, Request, Response
+from fastapi.concurrency import asynccontextmanager
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 
 from .config.config_db import ConfigDB
 from .config.config_models import InfoItem
+from .pipeline import Pipeline
+
+logger = logging.getLogger(__name__)
 
 
 class UI:
     """
-    UI interface for info_extract project configuration.
-    Provides a web interface to manage the info_item table in standard.db.
+    UI interface for info_extract project configuration and task management.
+    Provides a web interface to manage the info_item table in standard.db
+    and to process files through the pipeline.
     """
 
-    def __init__(self, db_path: str|None = None):
+    def __init__(self, host:str = "127.0.0.1", port:int = 5000,db_path: str|None = None, work_dir:str = "./workdir"):
         """
         Initialize the UI instance.
 
@@ -24,45 +42,100 @@ class UI:
             db_path: Path to the SQLite database. If None, uses default path.
         """
         self.config_db = ConfigDB(db_path)
-        self.app = Flask(__name__)
+
+        @asynccontextmanager
+        async def lifespan(app: FastAPI):
+            def open_browser():
+                url = f"http://{self._host}:{str(self._port)}"
+                try:
+                    webbrowser.open_new_tab(url)
+                    print(f"✅ 已自动打开浏览器: {url}")
+                except Exception as e:
+                    print(f"⚠️ 无法自动打开浏览器: {e}")
+                    print(f"请手动访问: {url}")
+            
+            # 延迟0.5秒确保服务器就绪
+            Timer(0.5, open_browser).start()
+        
+            yield  # 应用运行在此暂停
+            
+            # ==================== Shutdown ====================
+            # 在这里执行清理操作（如关闭数据库连接）
+            print("应用正在关闭...")
+        
+        self.app = FastAPI(title="Info Extract UI", 
+                           description="Web interface for info extract project",
+                           lifespan=lifespan)
 
         # Get the directory of this file to locate the HTML template
         current_dir = Path(__file__).parent
         # Navigate to web directory to find the template
         self.template_dir = current_dir.parent.parent / "web"
 
+        # Mount static files
+        self.app.mount("/static", StaticFiles(directory=str(self.template_dir)), name="static")
+
+        # Task management
+        self.tasks: Dict[str, Dict] = {}
+        self.work_dir: str = work_dir
+
+        # Add CORS middleware
+        self.app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+
+        self._host = host
+        self._port = port
+
         self._setup_routes()
     
     def _setup_routes(self):
-        """Set up the Flask routes for the UI."""
-        @self.app.route('/config/info_item', methods=['GET'])
-        def get_info_items():
+        """Set up the FastAPI routes for the UI."""
+
+        # Configuration-related routes
+        @self.app.get('/config/info_item')
+        async def get_info_items():
             """Get all info items from the database."""
             try:
                 info_items = self.config_db.get_info_items()
-                return jsonify([{
+                return [{
                     'id': item.id,
                     'label': item.label,
                     'describe': item.describe,
                     'data_type': item.data_type,
                     'sort_no': item.sort_no,
                     'sample_col_name': item.sample_col_name
-                } for item in info_items])
+                } for item in info_items]
             except Exception as e:
-                return jsonify({'error': str(e)}), 500
-            
-        @self.app.route('/favicon.ico')
-        def favicon():
-            return send_from_directory(str(self.template_dir), 'favicon.png')
-        
-        @self.app.route('/config/info_item', methods=['POST'])
-        def create_info_item():
+                return JSONResponse(content={'error': str(e)}, status_code=500)
+
+        @self.app.get('/favicon.ico')
+        async def favicon():
+            favicon_path = self.template_dir / 'favicon.png'
+            if favicon_path.exists():
+                return FileResponse(str(favicon_path))
+            else:
+                return JSONResponse(content={'error': 'Favicon not found'}, status_code=404)
+    
+        @self.app.head("/", include_in_schema=False)  # Hide from API docs
+        async def health_check():
+            return Response(
+                status_code=200,
+                headers={"X-Health": "OK"}
+            )
+
+        @self.app.post('/config/info_item')
+        async def create_info_item(request: Request):
             """Create a new info item in the database."""
             try:
-                data = request.json
+                data = await request.json()
                 # Add validation for required fields
                 if not data.get('label') or not data.get('data_type'):
-                    return jsonify({'error': 'Label and data_type are required'}), 400
+                    return JSONResponse(content={'error': 'Label and data_type are required'}, status_code=400)
 
                 # Use the ConfigDB method to create the item
                 new_item = InfoItem(
@@ -74,142 +147,305 @@ class UI:
                     sample_col_name=data.get('sample_col_name', '')
                 )
 
-                # We need to add a method in ConfigDB to add a new item
-                # For now, implementing with raw SQL that matches the expected return
-                import sqlite3
-                conn = sqlite3.connect(self.config_db.db_path)
-                cursor = conn.cursor()
-
-                cursor.execute("""
-                    INSERT INTO info_item (label, describe, data_type, sort_no, sample_col_name)
-                    VALUES (?, ?, ?, ?, ?)
-                """, (
-                    new_item.label,
-                    new_item.describe,
-                    new_item.data_type,
-                    new_item.sort_no,
-                    new_item.sample_col_name
-                ))
-
-                new_id = cursor.lastrowid
-                conn.commit()
-                conn.close()
-
                 # Return the created item with the new ID
-                return jsonify({
-                    'id': new_id,
+                return {
+                    'id': self.config_db.add_item(new_item),
                     'label': new_item.label,
                     'describe': new_item.describe,
                     'data_type': new_item.data_type,
                     'sort_no': new_item.sort_no,
                     'sample_col_name': new_item.sample_col_name
-                }), 201
+                }
             except Exception as e:
-                return jsonify({'error': str(e)}), 500
-        
-        @self.app.route('/config/info_item/<int:item_id>', methods=['PUT'])
-        def update_info_item(item_id: int):
+                return JSONResponse(content={'error': str(e)}, status_code=500)
+
+        @self.app.put('/config/info_item/{item_id}')
+        async def update_info_item(item_id: int, request: Request):
             """Update an existing info item in the database."""
             try:
-                data = request.json
+                data = await request.json()
                 # Add validation for required fields
                 if not data.get('label') or not data.get('data_type'):
-                    return jsonify({'error': 'Label and data_type are required'}), 400
+                    return JSONResponse(content={'error': 'Label and data_type are required'}, status_code=400)
 
-                # Get connection and update
-                import sqlite3
-                conn = sqlite3.connect(self.config_db.db_path)
-                cursor = conn.cursor()
-
-                cursor.execute("""
-                    UPDATE info_item
-                    SET label=?, describe=?, data_type=?, sort_no=?, sample_col_name=?
-                    WHERE id=?
-                """, (
-                    data['label'],
-                    data.get('describe'),
-                    data['data_type'],
-                    data.get('sort_no'),
-                    data.get('sample_col_name', ''),
-                    item_id
+                rowcount = self.config_db.update_item(InfoItem(
+                    id = item_id,
+                    label = data['label'],
+                    describe = data.get('describe'),
+                    data_type = data.get('data_type'),
+                    sort_no = data.get('sort_no'),
+                    sample_col_name = data.get('sample_col_name', ''),
                 ))
-
-                if cursor.rowcount == 0:
-                    conn.close()
-                    return jsonify({'error': 'Info item not found'}), 404
-
-                conn.commit()
-                conn.close()
-
+                if rowcount == 0:
+                    return JSONResponse(content={'error': 'Info item not found'}, status_code=404)
+                
                 # Return the updated item
-                return jsonify({
+                return {
                     'id': item_id,
                     'label': data['label'],
                     'describe': data.get('describe'),
                     'data_type': data['data_type'],
                     'sort_no': data.get('sort_no'),
                     'sample_col_name': data.get('sample_col_name', '')
-                })
+                }
             except Exception as e:
-                return jsonify({'error': str(e)}), 500
-        
-        @self.app.route('/config/info_item/<int:item_id>', methods=['DELETE'])
-        def delete_info_item(item_id: int):
+                return JSONResponse(content={'error': str(e)}, status_code=500)
+
+        @self.app.delete('/config/info_item/{item_id}')
+        async def delete_info_item(item_id: int):
             """Delete an info item from the database."""
             try:
-                import sqlite3
-                conn = sqlite3.connect(self.config_db.db_path)
-                cursor = conn.cursor()
-                
-                cursor.execute("DELETE FROM info_item WHERE id=?", (item_id,))
-                
-                if cursor.rowcount == 0:
-                    conn.close()
-                    return jsonify({'error': 'Info item not found'}), 404
-                
-                conn.commit()
-                conn.close()
-                
-                return jsonify({'message': 'Info item deleted successfully'})
+                rowcount = self.config_db.delete_item(item_id)
+
+                if rowcount == 0:
+                    return JSONResponse(content={'error': 'Info item not found'}, status_code=404)
+
+                return {'message': 'Info item deleted successfully'}
             except Exception as e:
-                return jsonify({'error': str(e)}), 500
-        
-        @self.app.route('/config/info_item_ui', methods=['GET'])
-        def serve_config_ui():
+                return JSONResponse(content={'error': str(e)}, status_code=500)
+
+        @self.app.get('/config/info_item_ui', response_class=HTMLResponse)
+        async def serve_config_ui():
             """Serve the configuration UI page."""
-            try:
-                return send_from_directory(str(self.template_dir), 'info_item.html')
-            except FileNotFoundError:
-                return "Configuration UI not found", 404
-        
+            config_ui_path = self.template_dir / 'info_item.html'
+            if config_ui_path.exists():
+                return FileResponse(str(config_ui_path), media_type="text/html")
+            else:
+                return HTMLResponse(content="Configuration UI not found", status_code=404)
+
         # Route to handle sorting updates
-        @self.app.route('/config/info_item/sort', methods=['POST'])
-        def update_sort_order():
+        @self.app.post('/config/info_item/sort')
+        async def update_sort_order(request: Request):
             """Update the sort order of info items."""
             try:
-                data = request.json
+                data = await request.json()
                 item_orders = data.get('items', [])
-                
-                if not item_orders:
-                    return jsonify({'error': 'No items provided'}), 400
-                
-                import sqlite3
-                conn = sqlite3.connect(self.config_db.db_path)
-                cursor = conn.cursor()
-                
-                for item in item_orders:
-                    cursor.execute(
-                        "UPDATE info_item SET sort_no=? WHERE id=?",
-                        (item['sort_no'], item['id'])
-                    )
-                
-                conn.commit()
-                conn.close()
-                
-                return jsonify({'message': 'Sort order updated successfully'})
-            except Exception as e:
-                return jsonify({'error': str(e)}), 500
 
-    def run(self, host='127.0.0.1', port=5000, debug=False):
-        """Run the Flask app."""
-        self.app.run(host=host, port=port, debug=debug)
+                if not item_orders:
+                    return JSONResponse(content={'error': 'No items provided'}, status_code=400)
+
+                self.config_db.update_items_sort(item_orders)
+
+                return {'message': 'Sort order updated successfully'}
+            except Exception as e:
+                return JSONResponse(content={'error': str(e)}, status_code=500)
+
+        # Main UI routes
+        @self.app.get('/', response_class=HTMLResponse)
+        async def serve_main_ui():
+            """Serve the main UI page."""
+            main_ui_path = self.template_dir / 'main.html'
+            if main_ui_path.exists():
+                return FileResponse(str(main_ui_path), media_type="text/html")
+            else:
+                return HTMLResponse(content="Main UI not found", status_code=404)
+
+        @self.app.get('/tasks', response_class=HTMLResponse)
+        async def serve_tasks_ui():
+            """Serve the tasks UI page."""
+            # For now, redirect to the main page since tasks.html doesn't exist
+            # In the future, a dedicated tasks page could be created
+            main_ui_path = self.template_dir / 'main.html'
+            if main_ui_path.exists():
+                return FileResponse(str(main_ui_path), media_type="text/html")
+            else:
+                return HTMLResponse(content="Main UI not found", status_code=404)
+
+        # File browsing API
+        @self.app.get('/api/working-directory')
+        async def get_working_directory():
+            """Get the current working directory."""
+            return {'working_directory': self.work_dir}
+
+        @self.app.post('/api/working-directory')
+        async def set_working_directory(request: Request):
+            """Set the working directory."""
+            try:
+                data = await request.json()
+                new_path = data.get('path', '')
+
+                # Validate the path to prevent directory traversal
+                if not os.path.exists(new_path) or not os.path.isdir(new_path):
+                    return JSONResponse(content={'error': 'Invalid directory path'}, status_code=400)
+
+                # Security check: ensure the path is within allowed boundaries
+                if not Path(new_path).resolve().is_relative_to(Path(self.work_dir).resolve()):
+                    # If the new directory is not within the current working directory, update it
+                    self.work_dir = new_path
+
+                return {'working_directory': self.work_dir}
+            except Exception as e:
+                return JSONResponse(content={'error': str(e)}, status_code=500)
+
+        @self.app.get('/api/files')
+        async def get_directory_contents(path: str|None = None):
+            """Get contents of a directory."""
+            try:
+                # Use the path from query parameter or default to the working directory
+                path = path or self.work_dir
+
+                # Security: validate path is within allowed boundaries
+                requested_path = Path(path).resolve()
+                base_path = Path(self.work_dir).resolve()
+
+                if not requested_path.is_relative_to(base_path):
+                    return JSONResponse(content={'error': 'Access denied'}, status_code=403)
+
+                if not os.path.exists(path) or not os.path.isdir(path):
+                    return JSONResponse(content={'error': 'Directory does not exist'}, status_code=400)
+
+                contents = []
+                for item in os.listdir(path):
+                    item_path = os.path.join(path, item)
+                    is_dir = os.path.isdir(item_path)
+
+                    # Only include files with allowed extensions or directories
+                    if is_dir or item.lower().endswith(('.eml', '.msg', '.xlsx')):
+                        contents.append({
+                            'name': item,
+                            'path': item_path,
+                            'is_directory': is_dir,
+                            'size': os.path.getsize(item_path) if not is_dir else 0,
+                            'modified': os.path.getmtime(item_path)
+                        })
+
+                return contents
+            except Exception as e:
+                return JSONResponse(content={'error': str(e)}, status_code=500)
+
+        # Task management API
+        @self.app.get('/api/tasks')
+        async def get_tasks():
+            """Get all tasks."""
+            return list(self.tasks.values())
+
+        # Streaming task processing API
+        @self.app.post('/api/tasks/stream')
+        async def create_task_stream(request: Request):
+            """Create a new processing task and stream progress updates."""
+            data = await request.json()
+            work_dir: str = data.get('working_directory', self.work_dir)
+            files: List[str] = data.get('files', [])
+
+            # Generate a unique task ID
+            task_id = str(uuid.uuid4())
+
+            # Create task object
+            task = {
+                'id': task_id,
+                'status': 'pending',
+                'progress': 0,
+                'created_at': datetime.now().isoformat(),
+                'started_at': None,
+                'completed_at': None,
+                'error': None,
+                'result_files': [],
+                'files': files
+            }
+
+            self.tasks[task_id] = task
+
+            async def generate_progress_stream():
+                """Generate a stream of progress updates."""
+                # Yield initial task info
+                yield f"data: {json.dumps({'type': 'task_info', 'data': task})}\n\n"
+
+                # Update task status to started
+                task['status'] = 'processing'
+                task['started_at'] = datetime.now().isoformat()
+
+                # Yield status update
+                yield f"data: {json.dumps({'type': 'status_update', 'data': {'task_id': task_id, 'status': 'processing', 'progress': 0}})}\n\n"
+
+                try:
+                    # Import source modules dynamically to process different file types
+                    from .executor import Executor
+
+                    executor = Executor(work_dir, specific_files=files)
+                    executor.clean_processing_dir()
+
+                    p = 0
+
+                    # Process all files at once using the executor
+                    async for txt in executor.pipeline.run():
+                        p += int((100 - p) / 10)
+                        task['progress'] = p
+                        yield f"data: {json.dumps({'type': 'progress_update', 'data': {'task_id': task_id, 'progress': p, 'log': txt}})}\n\n"
+
+                    # Update progress to 100% after processing
+                    task['progress'] = 100
+
+                    # Yield progress update
+                    yield f"data: {json.dumps({'type': 'progress_update', 'data': {'task_id': task_id, 'progress': 100}})}\n\n"
+
+                    # Update task status to completed
+                    task['status'] = 'completed'
+                    task['completed_at'] = datetime.now().isoformat()
+                    task['progress'] = 100
+                    # Add the result files to the task
+                    task['result_files'] = [f for f in os.listdir(executor.destination_dir) if os.path.isfile(os.path.join(executor.destination_dir, f))]
+
+                    # Yield completion update
+                    yield f"data: {json.dumps({'type': 'completion', 'data': {'task_id': task_id, 'status': 'completed', 'progress': 100, 'result_files': task['result_files']}})}\n\n"
+
+                except Exception as e:
+                    # Update task status to failed
+                    task['status'] = 'failed'
+                    task['error'] = str(e)
+                    task['completed_at'] = datetime.now().isoformat()
+
+                    # Yield error update
+                    yield f"data: {json.dumps({'type': 'error', 'data': {'task_id': task_id, 'status': 'failed', 'error': str(e)}})}\n\n"
+
+            # Return the streaming response
+            return StreamingResponse(generate_progress_stream(), media_type="text/plain")
+
+        @self.app.get('/api/tasks/{task_id}')
+        async def get_task(task_id: str):
+            """Get a specific task."""
+            task = self.tasks.get(task_id)
+            if not task:
+                return JSONResponse(content={'error': 'Task not found'}, status_code=404)
+            return task
+
+        @self.app.post('/api/tasks/{task_id}/cancel')
+        async def cancel_task(task_id: str):
+            """Cancel a specific task."""
+            task = self.tasks.get(task_id)
+            if not task:
+                return JSONResponse(content={'error': 'Task not found'}, status_code=404)
+
+            if task['status'] in ['completed', 'failed']:
+                return JSONResponse(content={'error': 'Cannot cancel completed or failed task'}, status_code=400)
+
+            # Update task status to cancelled
+            task['status'] = 'cancelled'
+            task['completed_at'] = datetime.now().isoformat()
+
+            return task
+
+        # Results API
+        @self.app.get('/api/results/{filename:path}')
+        async def get_result_file(filename: str):
+            """Download a result file."""
+            try:
+                # Security: ensure the filename doesn't contain path traversal
+                if '..' in filename or filename.startswith('/'):
+                    return JSONResponse(content={'error': 'Invalid filename'}, status_code=400)
+
+                # Find the file in task results
+                for task in self.tasks.values():
+                    if filename in task.get('result_files', []):
+                        filepath = os.path.join(task.get('working_directory', self.work_dir), filename)
+                        if os.path.exists(filepath):
+                            return FileResponse(path=filepath, filename=os.path.basename(filepath))
+
+                return JSONResponse(content={'error': 'File not found'}, status_code=404)
+            except Exception as e:
+                return JSONResponse(content={'error': str(e)}, status_code=500)
+
+    def run(self):
+        """Run the FastAPI app using uvicorn."""
+        import uvicorn
+        uvicorn.run(self.app, host=self._host, port=self._port)
+

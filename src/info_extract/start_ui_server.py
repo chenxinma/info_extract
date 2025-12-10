@@ -1,28 +1,27 @@
 #!/usr/bin/env python3
 """
-Script to start the UI server for manual testing.
+Script to start the UI server
 """
+import argparse
 from pathlib import Path
 from info_extract.ui import UI
 
+
 def start_server():
     """Start the UI server."""
+    parser = argparse.ArgumentParser(description='处理指定目录中的邮件文件')
+    parser.add_argument('--work-dir', type=str, required=True, help='工作目录')
+    # 解析命令行参数
+    args = parser.parse_args()
+
+    print(f"工作目录: {args.work_dir}")
+
     print("Starting UI server...")
-    
+
     # Initialize the UI with the correct database path
     db_path = Path("./config") / "standard.db"
-    ui = UI(db_path=str(db_path))
-    
-    print("Available routes:")
-    for rule in ui.app.url_map.iter_rules():
-        if rule.methods:
-            methods = ', '.join(rule.methods)
-            print(f"  {rule.rule} -> {methods}")
-    
-    print(f"\nHTML template is served from: {ui.template_dir}")
-    print("Starting server on http://127.0.0.1:5000/config/info_item_ui")
-    print("Press Ctrl+C to stop the server")
-    
+    ui = UI(db_path=str(db_path), work_dir=args.work_dir)
+
     # Run the server
-    ui.run(host='127.0.0.1', port=5000, debug=True)
+    ui.run()
 

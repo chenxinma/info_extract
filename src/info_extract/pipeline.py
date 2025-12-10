@@ -1,6 +1,7 @@
 import abc
 import logging
-from typing import Any, AsyncGenerator, List, Optional, Tuple, TypeAlias, overload
+from pathlib import Path
+from typing import Any, AsyncGenerator, Generator, Iterator, List, Optional, Self, Tuple, TypeAlias, overload
 
 
 logger = logging.getLogger(__name__)
@@ -17,6 +18,17 @@ class Step(abc.ABC):
 
     def verify(self, pre_result: StepResult) -> bool:
         return True
+    
+    def set_specific_files(self, specific_files: Optional[List[str]]=None) -> Self:
+        self.specific_files = specific_files
+        return self
+    
+    def source_files(self, source_dir: Path, pattern:str)-> List[Path]:
+        if self.specific_files:
+            return [ Path(f) for f in self.specific_files if Path(f).match(pattern) ]
+        else:
+            return [ f for f in source_dir.glob(pattern) ]
+
 
 StepGroup: TypeAlias = List[Tuple[str, Step]]
 
@@ -27,17 +39,27 @@ class Pipeline:
         self.source  = source
         self.extractors = extractors
         self.destination = destination
+        self._specific_files = None
+    
+    @property
+    def specific_files(self) -> Optional[List[str]]:
+        return self._specific_files
+    
+    @specific_files.setter
+    def specific_files(self, specific_files: Optional[List[str]]=None):
+        self._specific_files = specific_files
 
-    async def run(self):
+    async def run(self) -> AsyncGenerator[str, None]:
         """
         运行所有步骤
         """
         source_results = []
         # 运行source步骤
         for name, step in self.source:
-            logger.info(f"Running step {name}")
-            async for result in step.run():
+            logger.info(f"Running step {name}")            
+            async for result in step.set_specific_files(self.specific_files).run():
                 source_results.append(result)
+                yield f"读取{result[0]}"
 
         extract_results = []
         # 运行extractors步骤
@@ -47,6 +69,7 @@ class Pipeline:
             step.pre_results = pre_enabled_result
             async for result in step.run():
                 extract_results.append(result)
+                yield f"提取{result[0]}"
         
         # 运行destination步骤
         if self.destination:
@@ -55,3 +78,4 @@ class Pipeline:
                 logger.info(f"Running step {name}")
                 async for result in step.run():
                     logger.info(f"Step {name} result: {result}")
+                    yield f"{result[0]}处理完成"

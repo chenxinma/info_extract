@@ -23,7 +23,8 @@ class MSGReader(EmailReader):
         """处理source目录下的所有eml和msg文件"""
         # 获取所有msg文件
         
-        msg_files = list(self.source_dir.glob("*.msg"))
+        msg_files = self.source_files(self.source_dir, "*.msg")
+        logger.info(f"找到 {len(msg_files)} 个msg文件")
 
         for msg_fp in msg_files:
             step_result = await self._process_msg_file(msg_fp)

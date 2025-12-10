@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>信息抽取系统 - Web界面</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.8/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/7.0.1/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #165DFF;
+            --primary-light: #E8F3FF;
+            --secondary-color: #6B7280;
+            --success-color: #00B42A;
+            --danger-color: #F53F3F;
+            --warning-color: #FF7D00;
+            --light-bg: #F9FAFB;
+            --border-color: #E5E7EB;
+            --card-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            --hover-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            --transition: all 0.2s ease;
+        }
+
+        body {
+            font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+            background-color: var(--light-bg);
+            color: #333;
+            line-height: 1.5;
+        }
+
+        .header-bar {
+            background-color: white;
+            border-bottom: 1px solid var(--border-color);
+            padding: 0.8rem 1rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn {
+            border-radius: 6px;
+            font-size: 0.9rem;
+            padding: 0.4rem 0.8rem;
+            transition: var(--transition);
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .btn-primary:hover {
+            background-color: #0E4BD8;
+            border-color: #0E4BD8;
+            box-shadow: 0 2px 4px rgba(22, 93, 255, 0.2);
+        }
+
+        .btn-outline-primary {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .btn-outline-primary:hover {
+            background-color: var(--primary-light);
+        }
+
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: var(--card-shadow);
+            border: none;
+            transition: var(--transition);
+        }
+
+        .card:hover {
+            box-shadow: var(--hover-shadow);
+        }
+
+        .card-header {
+            background-color: var(--light-bg);
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 600;
+            padding: 1rem 1.2rem;
+        }
+
+        .upload-area {
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition);
+            background-color: white;
+        }
+        .upload-area:hover, .upload-area.dragover {
+            border-color: var(--primary-color);
+            background-color: var(--primary-light);
+        }
+        .file-item {
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: white;
+            transition: var(--transition);
+        }
+        .file-item:hover {
+            background-color: var(--primary-light);
+        }
+        .task-item {
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background-color: white;
+            transition: var(--transition);
+        }
+        .task-item:hover {
+            box-shadow: var(--hover-shadow);
+        }
+        .progress-bar {
+            height: 20px;
+        }
+        .task-status {
+            font-weight: 600;
+        }
+        .status-running {
+            color: var(--warning-color);
+        }
+        .status-completed {
+            color: var(--success-color);
+        }
+        .status-failed {
+            color: var(--danger-color);
+        }
+        .status-pending {
+            color: var(--secondary-color);
+        }
+        .log-container {
+            max-height: 300px;
+            overflow-y: auto;
+            background-color: white;
+            border: none;
+            border-radius: 0 0 6px 6px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .file-icon {
+            font-size: 24px;
+            margin-right: 10px;
+            color: var(--secondary-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <!-- 顶部操作栏 -->
+        <div class="header-bar">
+            <div class="container-fluid">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="header-title">
+                        <i class="fas fa-file-import"></i>
+                        <span>信息抽取工具</span>
+                    </div>
+                    <div class="header-actions">
+                        <button class="btn btn-outline-secondary btn-sm" id="btnSettings">
+                            <i class="fas fa-cog me-1"></i>设置
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="container-fluid" style="padding: 20px;">
+            <div class="row">
+                <!-- 左侧：工作目录浏览 -->
+                <div class="col-md-5">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-folder me-2"></i>工作目录</h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- 工作目录设置 -->
+                            <div class="mb-3">
+                                <label for="workDir" class="form-label">工作目录</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control form-control-sm" id="workDir" value="./work" placeholder="输入工作目录路径">
+                                    <button class="btn btn-outline-secondary btn-sm" type="button" id="browseDir">
+                                        <i class="fas fa-folder-open"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- 文件目录树浏览 -->
+                            <div class="mb-3">
+                                <label class="form-label">目录结构</label>
+                                <div class="border rounded p-3" style="height: 300px; overflow-y: auto; background-color: white;">
+                                    <ul class="file-tree list-unstyled">
+                                        <li>
+                                            <i class="fas fa-folder me-2 text-warning"></i>
+                                            <span class="fw-bold">work</span>
+                                            <ul class="list-unstyled ms-4 mt-2">
+                                                <li>
+                                                    <i class="fas fa-folder me-2 text-warning"></i>
+                                                    <span>source</span>
+                                                    <ul class="list-unstyled ms-4 mt-2">
+                                                        <li>
+                                                            <i class="fas fa-file me-2" style="color: #666;"></i>
+                                                            <span>document.eml</span>
+                                                        </li>
+                                                        <li>
+                                                            <i class="fas fa-file me-2" style="color: #666;"></i>
+                                                            <span>data.xlsx</span>
+                                                        </li>
+                                                    </ul>
+                                                </li>
+                                                <li>
+                                                    <i class="fas fa-folder me-2 text-warning"></i>
+                                                    <span>processing</span>
+                                                </li>
+                                                <li>
+                                                    <i class="fas fa-folder me-2 text-warning"></i>
+                                                    <span>destination</span>
+                                                </li>
+                                            </ul>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右侧：任务管理 -->
+                <div class="col-md-7">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="fas fa-tasks me-2"></i>任务管理</h5>
+                            <button class="btn btn-primary" id="startProcess">
+                                <i class="fas fa-play me-1"></i>开始处理
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <!-- 当前任务 -->
+                            <div class="mb-4">
+                                <h6 class="text-muted" style="font-size: 0.9rem;">当前任务</h6>
+                                <div id="currentTask">
+                                    <div class="alert alert-light border" style="color: var(--secondary-color);">暂无进行中的任务</div>
+                                </div>
+                            </div>
+
+                            <!-- 任务历史 -->
+                            <div>
+                                <h6 class="text-muted" style="font-size: 0.9rem;">任务历史</h6>
+                                <div id="taskHistory"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 实时日志 -->
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-terminal me-2"></i>实时日志</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="log-container" id="logContainer">
+                                <div class="log-entry">系统启动，等待任务...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.8/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 实际功能的JavaScript
+        document.addEventListener('DOMContentLoaded', function() {
+            // 工作目录相关元素
+            const browseDir = document.getElementById('browseDir');
+            const workDir = document.getElementById('workDir');
+            const fileTree = document.querySelector('.file-tree');
+            const startProcess = document.getElementById('startProcess');
+            const logContainer = document.getElementById('logContainer');
+            const settings = document.getElementById('btnSettings');
+
+            // 已选择的文件列表
+            let selectedFiles = [];
+
+            // 页面加载完成后获取当前工作目录
+            fetchWorkingDirectory();
+
+            // 获取当前工作目录
+            function fetchWorkingDirectory() {
+                fetch('/api/working-directory')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.working_directory) {
+                            workDir.value = data.working_directory;
+                            loadDirectoryContents(data.working_directory);
+                        } else {
+                            console.error('Failed to get working directory:', data.error);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching working directory:', error);
+                        appendToLog('获取工作目录失败: ' + error.message);
+                    });
+            }
+
+            // 设置工作目录
+            browseDir.addEventListener('click', function() {
+                const newDir = workDir.value.trim();
+                if (!newDir) {
+                    alert('请输入工作目录路径');
+                    return;
+                }
+
+                fetch('/api/working-directory', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ path: newDir })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.working_directory) {
+                        workDir.value = data.working_directory;
+                        loadDirectoryContents(data.working_directory);
+                        appendToLog(`工作目录已设置为: ${data.working_directory}`);
+                    } else {
+                        alert('设置工作目录失败: ' + data.error);
+                        console.error('Failed to set working directory:', data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error setting working directory:', error);
+                    alert('设置工作目录失败: ' + error.message);
+                });
+            });
+
+            // 加载目录内容
+            function loadDirectoryContents(path) {
+                fetch(`/api/files?path=${encodeURIComponent(path)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (Array.isArray(data)) {
+                            displayDirectoryContents(data, path);
+                        } else {
+                            console.error('Failed to load directory contents:', data.error);
+                            appendToLog('加载目录内容失败: ' + data.error);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error loading directory contents:', error);
+                        appendToLog('加载目录内容失败: ' + error.message);
+                    });
+            }
+
+            // 显示目录内容
+            function displayDirectoryContents(contents, currentPath) {
+                // Clear the file tree
+                fileTree.innerHTML = '';
+
+                // Add current directory name at the top
+                const rootItem = document.createElement('li');
+                rootItem.innerHTML = `
+                    <i class="fas fa-folder me-2 text-warning"></i>
+                    <span class="fw-bold">${currentPath.split('/').pop() || currentPath}</span>
+                `;
+                fileTree.appendChild(rootItem);
+
+                // Create a nested structure for the contents
+                const ul = document.createElement('ul');
+                ul.className = 'list-unstyled ms-4 mt-2';
+
+                contents.forEach(item => {
+                    const li = document.createElement('li');
+                    if (item.is_directory) {
+                        li.innerHTML = `
+                            <i class="fas fa-folder me-2 text-warning folder-icon"></i>
+                            <span class="folder-name">${item.name}</span>
+                        `;
+                        // Add click event for folder
+                        li.addEventListener('click', (e) => {
+                            e.stopPropagation(); // Prevent triggering parent clicks
+                            loadDirectoryContents(item.path);
+                        });
+
+                        // Add click event for arrow to expand/collapse
+                        const folderName = li.querySelector('.folder-name');
+                        folderName.style.cursor = 'pointer';
+                    } else {
+                        // Check if file is of supported type
+                        const supportedFileTypes = ['.eml', '.msg', '.xlsx', '.xls', '.csv', '.txt', '.pdf', '.docx', '.doc', '.json'];
+                        const fileExt = '.' + item.name.split('.').pop().toLowerCase();
+
+                        if (supportedFileTypes.includes(fileExt)) {
+                            li.innerHTML = `
+                                <i class="fas fa-file me-2 file-icon" style="color: #666;"></i>
+                                <span class="file-name">${item.name}</span>
+                            `;
+
+                            // Add click event for file selection
+                            li.style.cursor = 'pointer';
+                            li.addEventListener('click', (e) => {
+                                e.stopPropagation(); // Prevent triggering parent clicks
+
+                                // Toggle selection
+                                const filePath = item.path;
+                                const isSelected = selectedFiles.includes(filePath);
+
+                                if (isSelected) {
+                                    // Remove from selection
+                                    selectedFiles = selectedFiles.filter(path => path !== filePath);
+                                    li.style.backgroundColor = '';
+                                    li.style.fontWeight = '';
+                                    appendToLog(`文件 ${item.name} 已取消选择`);
+                                } else {
+                                    // Add to selection
+                                    selectedFiles.push(filePath);
+                                    li.style.backgroundColor = 'var(--primary-light)';
+                                    li.style.fontWeight = 'bold';
+                                    appendToLog(`文件 ${item.name} 已选择`);
+                                }
+
+                                // Update the selected files display
+                                updateSelectedFilesDisplay();
+                            });
+
+                            // If this file was previously selected, highlight it
+                            if (selectedFiles.includes(item.path)) {
+                                li.style.backgroundColor = 'var(--primary-light)';
+                                li.style.fontWeight = 'bold';
+                            }
+                        } else {
+                            // For unsupported file types, just show a different icon
+                            li.innerHTML = `
+                                <i class="fas fa-file me-2" style="color: #bbb;"></i>
+                                <span>${item.name}</span>
+                            `;
+                        }
+                    }
+
+                    ul.appendChild(li);
+                });
+
+                rootItem.appendChild(ul);
+            }
+
+            // 更新已选择文件显示
+            function updateSelectedFilesDisplay() {
+                // For now, we'll just update the log, but in a complete implementation,
+                // you might want to show selected files in a separate area
+                const selectedCount = selectedFiles.length;
+                appendToLog(`当前已选择 ${selectedCount} 个文件`);
+            }
+
+            // 添加日志条目
+            function appendToLog(message) {
+                const logEntry = document.createElement('div');
+                logEntry.className = 'log-entry';
+                logEntry.textContent = `[${new Date().toLocaleString('sv-SE', {hour12: false})}] ${message}`;
+                logContainer.appendChild(logEntry);
+
+                // 自动滚动到底部
+                logContainer.scrollTop = logContainer.scrollHeight;
+            }
+
+            settings.addEventListener('click', function() {
+                document.location.href = "config/info_item_ui";
+            });
+
+            // 开始处理任务
+            startProcess.addEventListener('click', function() {
+                // if (selectedFiles.length === 0) {
+                //     alert('请先选择至少一个文件');
+                //     return;
+                // }
+
+                // Get the current working directory
+                const workDirValue = workDir.value;
+
+                // Create processing task with streaming using fetch
+                fetch('/api/tasks/stream', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        files: selectedFiles,
+                        working_directory: workDirValue
+                    })
+                })
+                .then(response => {
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+
+                    // Disable the start process button while task is running
+                    document.getElementById('startProcess').disabled = true;
+
+                    // Clear current task display and show processing UI
+                    let taskId = null;
+                    document.getElementById('currentTask').innerHTML = `
+                        <div class="task-item">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <div class="task-status status-running">
+                                        <i class="fas fa-sync fa-spin me-1"></i>任务 - 处理中
+                                    </div>
+                                    <div class="small" style="color: var(--secondary-color);">开始时间: ${new Date().toLocaleString()}</div>
+                                </div>
+                                <div>
+                                    <button class="btn btn-sm btn-outline-danger" id="cancelTask">
+                                        <i class="fas fa-stop"></i> 取消
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <div class="progress" style="height: 8px;">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                         role="progressbar" style="width: 0%; background-color: var(--primary-color);" id="taskProgress">0%</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                    function readStream() {
+                        reader.read().then(({ done, value }) => {
+                            if (done) {
+                                // Enable the start process button when stream is done
+                                document.getElementById('startProcess').disabled = false;
+                                return;
+                            }
+
+                            // Add new data to buffer
+                            buffer += decoder.decode(value, { stream: true });
+
+                            // Process complete lines from buffer
+                            let lines = buffer.split('\n');
+
+                            // Keep the last incomplete line in the buffer
+                            buffer = lines.pop();
+
+                            // Process all complete lines
+                            for (let line of lines) {
+                                // Check if the line starts with "data: " and extract the JSON
+                                if (line.startsWith('data: ')) {
+                                    try {
+                                        const jsonStr = line.substring(6); // Remove "data: " prefix
+                                        const data = JSON.parse(jsonStr);
+                                        const messageType = data.type;
+                                        const messageData = data.data;
+
+                                        switch(messageType) {
+                                            case 'task_info':
+                                                taskId = messageData.id;
+                                                document.querySelector('#currentTask .task-status').innerHTML =
+                                                    `<i class="fas fa-sync fa-spin me-1"></i>任务 ${taskId.substring(0, 8)} - 处理中`;
+                                                appendToLog(`开始处理任务，任务ID: ${taskId.substring(0, 8)}...`);
+                                                break;
+
+                                            case 'status_update':
+                                                // Update status text
+                                                if (taskId) {
+                                                    const statusElement = document.querySelector('#currentTask .task-status');
+                                                    if (statusElement) {
+                                                        const statusText = getStatusText(messageData.status);
+                                                        statusElement.innerHTML = `<i class="${getStatusIcon(messageData.status)} me-1"></i>任务 ${taskId.substring(0, 8)} - ${statusText}`;
+                                                        statusElement.className = `task-status ${getStatusClass(messageData.status)}`;
+                                                    }
+                                                }
+                                                break;
+
+                                            case 'progress_update':
+                                                // Update progress bar
+                                                const progress = messageData.progress || 0;
+                                                const progressBar = document.getElementById('taskProgress');
+                                                if (progressBar) {
+                                                    progressBar.style.width = `${progress}%`;
+                                                    progressBar.textContent = `${progress}%`;
+                                                }
+                                                appendToLog(`任务进度: ${progress}%`);
+                                                break;
+
+                                            case 'completion':
+                                                // Update UI for completion
+                                                if (taskId) {
+                                                    const statusElement = document.querySelector('#currentTask .task-status');
+                                                    if (statusElement) {
+                                                        const statusText = getStatusText(messageData.status);
+                                                        statusElement.innerHTML = `<i class="${getStatusIcon(messageData.status)} me-1"></i>任务 ${taskId.substring(0, 8)} - ${statusText}`;
+                                                        statusElement.className = `task-status ${getStatusClass(messageData.status)}`;
+                                                    }
+
+                                                    // Add to task history
+                                                    const taskHistory = document.getElementById('taskHistory');
+                                                    const completedTask = document.querySelector('#currentTask .task-item').cloneNode(true);
+                                                    taskHistory.insertBefore(completedTask, taskHistory.firstChild);
+
+                                                    // Clear current task display
+                                                    document.getElementById('currentTask').innerHTML = '<div class="alert alert-light border" style="color: var(--secondary-color);">暂无进行中的任务</div>';
+
+                                                    // Log completion
+                                                    appendToLog(`任务 ${taskId.substring(0, 8)} 处理完成，状态: ${getStatusText(messageData.status)}`);
+
+                                                    // Clear selected files after successful processing
+                                                    if (messageData.status === 'completed') {
+                                                        selectedFiles = [];
+                                                        // Reset UI selections
+                                                        document.querySelectorAll('.file-tree li[style*="background-color"]').forEach(item => {
+                                                            item.style.backgroundColor = '';
+                                                            item.style.fontWeight = '';
+                                                        });
+                                                    }
+
+                                                    document.getElementById('taskProgress').parentElement.remove();
+                                                    document.getElementById('cancelTask').parentElement.remove();
+
+                                                    // Enable the start process button
+                                                    document.getElementById('startProcess').disabled = false;
+                                                }
+                                                break;
+
+                                            case 'error':
+                                                // Handle error
+                                                if (taskId) {
+                                                    const statusElement = document.querySelector('#currentTask .task-status');
+                                                    if (statusElement) {
+                                                        const statusText = getStatusText(messageData.status);
+                                                        statusElement.innerHTML = `<i class="${getStatusIcon(messageData.status)} me-1"></i>任务 ${taskId.substring(0, 8)} - ${statusText}`;
+                                                        statusElement.className = `task-status ${getStatusClass(messageData.status)}`;
+                                                    }
+
+                                                    // Add to task history
+                                                    const taskHistory = document.getElementById('taskHistory');
+                                                    const completedTask = document.querySelector('#currentTask .task-item').cloneNode(true);
+                                                    taskHistory.insertBefore(completedTask, taskHistory.firstChild);
+
+                                                    // Clear current task display
+                                                    document.getElementById('currentTask').innerHTML = '<div class="alert alert-light border" style="color: var(--secondary-color);">暂无进行中的任务</div>';
+
+                                                    // Log error
+                                                    appendToLog(`任务 ${taskId.substring(0, 8)} 处理失败: ${messageData.error}`);
+
+                                                    // Enable the start process button
+                                                    document.getElementById('startProcess').disabled = false;
+                                                }
+                                                break;
+                                        }
+                                    } catch (e) {
+                                        console.error('Error parsing JSON from stream:', e, 'Line:', line);
+                                    }
+                                }
+                            }
+
+                            // Continue reading the stream
+                            readStream();
+                        }).catch(error => {
+                            console.error('Error reading stream:', error);
+                            appendToLog('读取流数据出错: ' + error.message);
+
+                            // Enable the start process button
+                            document.getElementById('startProcess').disabled = false;
+                        });
+                    }
+
+                    // Start reading the stream
+                    readStream();
+                })
+                .catch(error => {
+                    console.error('Error starting streaming task:', error);
+                    appendToLog('启动流式任务失败: ' + error.message);
+
+                    // Enable the start process button
+                    document.getElementById('startProcess').disabled = false;
+                });
+            });
+
+            // 获取状态文本
+            function getStatusText(status) {
+                switch(status) {
+                    case 'pending':
+                        return '待处理';
+                    case 'processing':
+                        return '处理中';
+                    case 'completed':
+                        return '已完成';
+                    case 'failed':
+                        return '已失败';
+                    case 'cancelled':
+                        return '已取消';
+                    default:
+                        return status;
+                }
+            }
+
+            // 获取状态图标
+            function getStatusIcon(status) {
+                switch(status) {
+                    case 'completed':
+                        return 'fas fa-check-circle';
+                    case 'failed':
+                        return 'fas fa-exclamation-circle';
+                    case 'cancelled':
+                        return 'fas fa-times-circle';
+                    case 'processing':
+                        return 'fas fa-sync fa-spin';
+                    default:
+                        return 'fas fa-clock';
+                }
+            }
+
+            // 获取状态类
+            function getStatusClass(status) {
+                switch(status) {
+                    case 'processing':
+                        return 'task-status status-running';
+                    case 'completed':
+                        return 'task-status status-completed';
+                    case 'failed':
+                        return 'task-status status-failed';
+                    case 'cancelled':
+                        return 'task-status status-failed';
+                    default:
+                        return 'task-status status-pending';
+                }
+            }
+
+            // Cancel task event delegation
+            document.getElementById('currentTask').addEventListener('click', function(e) {
+                const cancelBtn = e.target.closest('#cancelTask');
+                if (cancelBtn) {
+                    const taskId = cancelBtn.getAttribute('data-task-id');
+                    if (taskId) {
+                        cancelTask(taskId);
+                    }
+                }
+            });
+
+            // Cancel task function
+            function cancelTask(taskId) {
+                if (!confirm('确定要取消此任务吗？')) {
+                    return;
+                }
+
+                fetch(`/api/tasks/${taskId}/cancel`, {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.id) {
+                        appendToLog(`任务 ${taskId.substring(0, 8)} 已取消`);
+                    } else {
+                        appendToLog(`取消任务失败: ${data.error}`);
+                        console.error('Failed to cancel task:', data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error cancelling task:', error);
+                    appendToLog('取消任务失败: ' + error.message);
+                });
+            }
+        });
+    </script>
+</body>
+</html>

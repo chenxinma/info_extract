@@ -45,7 +45,10 @@ class ExcelReader(Step):
         Yields:
             按sheet返回parquest文件路径
         """
-        for excel_file in self.source_dir.glob("*.xls*"):
+        _files = self.source_files(self.source_dir, "*.xls*")
+        logger.info(f"找到 {len(_files)} 个excel文件")
+
+        for excel_file in _files:
             if excel_file.stem.endswith("~"):
                 continue
             book = load_workbook(str(excel_file))
@@ -77,7 +80,7 @@ class ExcelReader(Step):
                     sheet_name=fname,
                     header_row=header_row,
                     columns=list(df.columns),
-                    sample_data=df.sample(min(3, n_rows)).to_dict(orient="records")
+                    sample_data=df.sample(min(3, n_rows)).to_dict(orient="records") # type: ignore
                 )
                 self.meta_list.append(meta)
                 parquet_file = self.processing_dir / f"{fname}.parquet"

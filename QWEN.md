@@ -11,7 +11,7 @@ config: 参数、提示词等配置信息
 docs: 设计文档
 src: python程序源码
 tests: unittests
-web: flask 界面html模板
+web: fastapi 界面html模板
 log: 日志
 
 ## 程序示例

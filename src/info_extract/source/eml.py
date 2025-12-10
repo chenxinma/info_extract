@@ -15,7 +15,7 @@ class EMLReader(EmailReader):
     """处理eml邮件文件，提取正文内容"""
 
     async def run(self) -> AsyncGenerator[StepResult, None]:
-        eml_files = list(self.source_dir.glob("*.eml"))
+        eml_files = self.source_files(self.source_dir, "*.eml")
         logger.info(f"找到 {len(eml_files)} 个eml文件")
 
         for eml_fp in eml_files:
