@@ -2,7 +2,7 @@ import logging
 import os
 from typing import List, Optional
 
-from .extract import PlainExtractor, SpreadsheetExtractor, DataFrameMappingExtract
+from .extract import PlainExtractor, SpreadsheetExtractor #, DataFrameMappingExtract
 from .pipeline import Pipeline
 from .source import EMLReader, ExcelReader, MSGReader
 from .destination import ExcelExporter
