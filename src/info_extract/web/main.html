@@ -181,6 +181,14 @@
                         <span>信息抽取工具</span>
                     </div>
                     <div class="header-actions">
+                        <div class="dropdown me-2">
+                            <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-book me-1"></i><span id="currentProfileName">加载中...</span>
+                            </button>
+                            <ul class="dropdown-menu" id="profileList">
+                                <!-- Profiles will be loaded here dynamically -->
+                            </ul>
+                        </div>
                         <button class="btn btn-outline-secondary btn-sm" id="btnSettings">
                             <i class="fas fa-cog me-1"></i>设置
                         </button>
@@ -303,12 +311,102 @@
             const startProcess = document.getElementById('startProcess');
             const logContainer = document.getElementById('logContainer');
             const settings = document.getElementById('btnSettings');
+            const profileList = document.getElementById('profileList');
+            const currentProfileName = document.getElementById('currentProfileName');
 
             // 已选择的文件列表
             let selectedFiles = [];
 
-            // 页面加载完成后获取当前工作目录
+            // 页面加载完成后获取当前工作目录和 profiles
             fetchWorkingDirectory();
+            loadProfiles();
+
+            // Load available profiles from the API
+            async function loadProfiles() {
+                try {
+                    const response = await fetch('/api/config/profiles');
+                    const profiles = await response.json();
+
+                    if (Array.isArray(profiles)) {
+                        // Clear the dropdown list
+                        profileList.innerHTML = '';
+
+                        // Populate the dropdown with available profiles
+                        profiles.forEach(profile => {
+                            const listItem = document.createElement('li');
+                            const link = document.createElement('a');
+                            link.className = 'dropdown-item';
+                            link.href = '#';
+                            link.dataset.profileId = profile.id;
+                            link.innerHTML = `
+                                ${profile.isActive ? '<i class="fas fa-check me-2"></i>' : '<i class="fas fa-book me-2"></i>'}
+                                ${profile.name}
+                                ${profile.isActive ? ' <span class="badge bg-primary">当前</span>' : ''}
+                            `;
+
+                            // Add click event to switch profile
+                            link.addEventListener('click', function(e) {
+                                e.preventDefault();
+                                switchProfile(profile.id, profile.name);
+                            });
+
+                            listItem.appendChild(link);
+                            profileList.appendChild(listItem);
+                        });
+
+                        // Find and display the current active profile name
+                        const activeProfile = profiles.find(profile => profile.isActive);
+                        if (activeProfile) {
+                            currentProfileName.textContent = activeProfile.name;
+                        } else {
+                            currentProfileName.textContent = '未选择';
+                        }
+                    } else {
+                        console.error('Invalid response format for profiles:', profiles);
+                        currentProfileName.textContent = '加载失败';
+                    }
+                } catch (error) {
+                    console.error('Error fetching profiles:', error);
+                    currentProfileName.textContent = '加载失败';
+                    appendToLog('加载配置集出错: ' + error.message);
+                }
+            }
+
+            // Switch to a different profile
+            async function switchProfile(profileId, profileName) {
+                try {
+                    const response = await fetch('/api/config/profiles/switch', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ profile_id: profileId })
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        appendToLog(`配置集已切换到: ${profileName}`);
+
+                        // Refresh the profile list to update active status
+                        await loadProfiles();
+
+                        // Optionally reload the page to ensure all components use the new profile
+                        // For now we'll just show a notification that a refresh might be needed
+                        if (confirm(`配置集已切换到: ${profileName}\n\n是否需要刷新页面以确保所有设置都应用新配置？`)) {
+                            window.location.reload();
+                        }
+                    } else {
+                        console.error('Failed to switch profile:', result.error);
+                        alert('切换配置集失败: ' + result.error);
+                        appendToLog('切换配置集失败: ' + result.error);
+                    }
+                } catch (error) {
+                    console.error('Error switching profile:', error);
+                    alert('切换配置集时发生错误: ' + error.message);
+                    appendToLog('切换配置集错误: ' + error.message);
+                }
+            }
 
             // 获取当前工作目录
             function fetchWorkingDirectory() {

@@ -14,13 +14,13 @@ from typing import Dict, List
 import webbrowser
 from importlib.resources import files
 
-from fastapi import FastAPI, Request, Response
+from fastapi import Depends, FastAPI, Request, Response
 from fastapi.concurrency import asynccontextmanager
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
-from .config.config_db import ConfigDB
+from .config.profile_manager import ProfileManager
 from .config.config_models import InfoItem
 from .pipeline import Pipeline
 
@@ -41,7 +41,6 @@ class UI:
         Args:
             db_path: Path to the SQLite database. If None, uses default path.
         """
-        self.config_db = ConfigDB(db_path)
 
         @asynccontextmanager
         async def lifespan(app: FastAPI):
@@ -57,20 +56,24 @@ class UI:
             # 延迟0.5秒确保服务器就绪
             Timer(0.5, open_browser).start()
         
-            yield  # 应用运行在此暂停
+            # Initialize the profile manager and make it available to the UI
+            from .config import profile_manager
+            yield  {'profile_manager': profile_manager}
             
             # ==================== Shutdown ====================
             # 在这里执行清理操作（如关闭数据库连接）
             print("应用正在关闭...")
         
-        self.app = FastAPI(title="Info Extract UI", 
+        self.app = FastAPI(title="Info Extract UI",
                            description="Web interface for info extract project",
                            lifespan=lifespan)
 
- 
+
         # Navigate to web directory to find the template
         self.template_dir = Path(__file__).parent / "web"
         print("template dir", self.template_dir)
+
+        
 
         # Mount static files
         self.app.mount("/static", StaticFiles(directory=str(self.template_dir)), name="static")
@@ -93,15 +96,20 @@ class UI:
 
         self._setup_routes()
     
+    async def get_profile_manager(self, request: Request) -> ProfileManager:
+        return request.state.profile_manager
+    
     def _setup_routes(self):
         """Set up the FastAPI routes for the UI."""
 
         # Configuration-related routes
         @self.app.get('/config/info_item')
-        async def get_info_items():
+        async def get_info_items(profile_manager: ProfileManager = Depends(self.get_profile_manager)):
             """Get all info items from the database."""
             try:
-                info_items = self.config_db.get_info_items()
+                # Get the config_db instance from the profile manager to ensure we're using the active profile
+                config_db = profile_manager.get_config_db()
+                info_items = config_db.get_info_items()
                 return [{
                     'id': item.id,
                     'label': item.label,
@@ -129,9 +137,12 @@ class UI:
             )
 
         @self.app.post('/config/info_item')
-        async def create_info_item(request: Request):
+        async def create_info_item(request: Request, profile_manager: ProfileManager = Depends(self.get_profile_manager)):
             """Create a new info item in the database."""
             try:
+                # Get the config_db instance from the profile manager to ensure we're using the active profile
+                config_db = profile_manager.get_config_db()
+
                 data = await request.json()
                 # Add validation for required fields
                 if not data.get('label') or not data.get('data_type'):
@@ -149,7 +160,7 @@ class UI:
 
                 # Return the created item with the new ID
                 return {
-                    'id': self.config_db.add_item(new_item),
+                    'id': config_db.add_item(new_item),
                     'label': new_item.label,
                     'describe': new_item.describe,
                     'data_type': new_item.data_type,
@@ -160,25 +171,28 @@ class UI:
                 return JSONResponse(content={'error': str(e)}, status_code=500)
 
         @self.app.put('/config/info_item/{item_id}')
-        async def update_info_item(item_id: int, request: Request):
+        async def update_info_item(item_id: int, request: Request, profile_manager: ProfileManager = Depends(self.get_profile_manager)):
             """Update an existing info item in the database."""
             try:
+                # Get the config_db instance from the profile manager to ensure we're using the active profile
+                config_db = profile_manager.get_config_db()
+
                 data = await request.json()
                 # Add validation for required fields
                 if not data.get('label') or not data.get('data_type'):
                     return JSONResponse(content={'error': 'Label and data_type are required'}, status_code=400)
 
-                rowcount = self.config_db.update_item(InfoItem(
+                rowcount = config_db.update_item(InfoItem(
                     id = item_id,
                     label = data['label'],
                     describe = data.get('describe'),
-                    data_type = data.get('data_type'),
+                    data_type = data['data_type'],
                     sort_no = data.get('sort_no'),
                     sample_col_name = data.get('sample_col_name', ''),
                 ))
                 if rowcount == 0:
                     return JSONResponse(content={'error': 'Info item not found'}, status_code=404)
-                
+
                 # Return the updated item
                 return {
                     'id': item_id,
@@ -192,10 +206,13 @@ class UI:
                 return JSONResponse(content={'error': str(e)}, status_code=500)
 
         @self.app.delete('/config/info_item/{item_id}')
-        async def delete_info_item(item_id: int):
+        async def delete_info_item(item_id: int, profile_manager: ProfileManager = Depends(self.get_profile_manager)):
             """Delete an info item from the database."""
             try:
-                rowcount = self.config_db.delete_item(item_id)
+                # Get the config_db instance from the profile manager to ensure we're using the active profile
+                config_db = profile_manager.get_config_db()
+
+                rowcount = config_db.delete_item(item_id)
 
                 if rowcount == 0:
                     return JSONResponse(content={'error': 'Info item not found'}, status_code=404)
@@ -215,16 +232,19 @@ class UI:
 
         # Route to handle sorting updates
         @self.app.post('/config/info_item/sort')
-        async def update_sort_order(request: Request):
+        async def update_sort_order(request: Request, profile_manager: ProfileManager = Depends(self.get_profile_manager)):
             """Update the sort order of info items."""
             try:
+                # Get the config_db instance from the profile manager to ensure we're using the active profile
+                config_db = profile_manager.get_config_db()
+
                 data = await request.json()
                 item_orders = data.get('items', [])
 
                 if not item_orders:
                     return JSONResponse(content={'error': 'No items provided'}, status_code=400)
 
-                self.config_db.update_items_sort(item_orders)
+                config_db.update_items_sort(item_orders)
 
                 return {'message': 'Sort order updated successfully'}
             except Exception as e:
@@ -441,6 +461,71 @@ class UI:
                             return FileResponse(path=filepath, filename=os.path.basename(filepath))
 
                 return JSONResponse(content={'error': 'File not found'}, status_code=404)
+            except Exception as e:
+                return JSONResponse(content={'error': str(e)}, status_code=500)
+
+        # Profile management endpoints
+        @self.app.get('/api/config/profiles')
+        async def get_profiles(profile_manager: ProfileManager = Depends(self.get_profile_manager)):
+            """Get all available profiles."""
+            try:
+                profiles = profile_manager.get_available_profiles()
+                return profiles
+            except Exception as e:
+                return JSONResponse(content={'error': str(e)}, status_code=500)
+
+        @self.app.post('/api/config/profiles/switch')
+        async def switch_profile(request: Request, profile_manager: ProfileManager = Depends(self.get_profile_manager)):
+            """Switch to a different profile."""
+            try:
+                data = await request.json()
+                profile_id = data.get('profile_id')
+
+                if not profile_id:
+                    return JSONResponse(content={'error': 'profile_id is required'}, status_code=400)
+
+                success = profile_manager.switch_profile(profile_id)
+                if not success:
+                    return JSONResponse(content={'error': 'Profile not found'}, status_code=404)
+
+                return {'success': True, 'message': f'Profile switched to ID {profile_id}'}
+            except Exception as e:
+                return JSONResponse(content={'error': str(e)}, status_code=500)
+
+        @self.app.get('/api/config/profiles/current')
+        async def get_current_profile(profile_manager: ProfileManager = Depends(self.get_profile_manager)):
+            """Get the current active profile."""
+            try:
+                current_profile = profile_manager.get_current_profile()
+                return current_profile
+            except Exception as e:
+                return JSONResponse(content={'error': str(e)}, status_code=500)
+
+        @self.app.post('/api/config/profiles')
+        async def create_profile(request: Request, profile_manager: ProfileManager = Depends(self.get_profile_manager)):
+            """Create a new profile."""
+            try:
+                data = await request.json()
+                name = data.get('name')
+                description = data.get('description', '')
+
+                if not name:
+                    return JSONResponse(content={'error': 'name is required'}, status_code=400)
+
+                # Check if profile with this name already exists
+                existing_profiles = profile_manager.get_available_profiles()
+                for profile in existing_profiles:
+                    if profile['name'] == name:
+                        return JSONResponse(content={'error': f'Profile with name "{name}" already exists'}, status_code=400)
+
+                new_profile_id = profile_manager.create_profile(name, description)
+                return {
+                    'id': new_profile_id,
+                    'name': name,
+                    'description': description,
+                    'is_default': False,
+                    'isActive': False
+                }
             except Exception as e:
                 return JSONResponse(content={'error': str(e)}, status_code=500)
 
