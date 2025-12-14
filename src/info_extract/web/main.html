@@ -425,6 +425,30 @@
                 logContainer.scrollTop = logContainer.scrollHeight;
             }
 
+            // Cancel task function
+            function cancelTask(taskId) {
+                if (!confirm('确定要取消此任务吗？')) {
+                    return;
+                }
+
+                fetch(`/api/tasks/${taskId}/cancel`, {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.id) {
+                        appendToLog(`任务 ${taskId.substring(0, 8)} 已取消`);
+                    } else {
+                        appendToLog(`取消任务失败: ${data.error}`);
+                        console.error('Failed to cancel task:', data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error cancelling task:', error);
+                    appendToLog('取消任务失败: ' + error.message);
+                });
+            }
+
             settings.addEventListener('click', function() {
                 document.location.href = "config/info_item_ui";
             });
@@ -470,10 +494,10 @@
                                     <div class="small" style="color: var(--secondary-color);">开始时间: ${new Date().toLocaleString()}</div>
                                 </div>
                                 <div>
-                                    <button class="btn btn-sm btn-outline-danger" id="cancelTask">
-                                        <i class="fas fa-stop"></i> 取消
-                                    </button>
-                                </div>
+                                <button class="btn btn-sm btn-outline-danger" id="cancelTaskBtn" data-task-id="">
+                                    <i class="fas fa-stop"></i> 取消
+                                </button>
+                            </div>
                             </div>
                             <div class="mt-2">
                                 <div class="progress" style="height: 8px;">
@@ -516,6 +540,17 @@
                                                 taskId = messageData.id;
                                                 document.querySelector('#currentTask .task-status').innerHTML =
                                                     `<i class="fas fa-sync fa-spin me-1"></i>任务 ${taskId.substring(0, 8)} - 处理中`;
+                                                
+                                                // 设置取消按钮的任务ID
+                                                const cancelBtn = document.getElementById('cancelTaskBtn');
+                                                if (cancelBtn) {
+                                                    cancelBtn.setAttribute('data-task-id', taskId);
+                                                    console.log(`设置取消按钮任务ID为: ${taskId}`);
+                                                    cancelBtn.addEventListener('click', () => {
+                                                        cancelTask(taskId);
+                                                    });
+                                                }
+
                                                 appendToLog(`开始处理任务，任务ID: ${taskId.substring(0, 8)}...`);
                                                 break;
 
@@ -539,7 +574,43 @@
                                                     progressBar.style.width = `${progress}%`;
                                                     progressBar.textContent = `${progress}%`;
                                                 }
-                                                appendToLog(`任务进度: ${progress}%`);
+                                                // appendToLog(`任务进度: ${progress}%`);
+                                                break;
+                                            
+                                            case 'cancellation':
+                                                // Update UI for cancellation
+                                                if (taskId) {
+                                                    const statusElement = document.querySelector('#currentTask .task-status');
+                                                    if (statusElement) {
+                                                        const statusText = getStatusText(messageData.status);
+                                                        statusElement.innerHTML = `<i class="${getStatusIcon(messageData.status)} me-1"></i>任务 ${taskId.substring(0, 8)} - ${statusText}`;
+                                                        statusElement.className = `task-status ${getStatusClass(messageData.status)}`;
+                                                    }
+
+                                                    // Add to task history
+                                                    const taskHistory = document.getElementById('taskHistory');
+                                                    const completedTask = document.querySelector('#currentTask .task-item').cloneNode(true);
+                                                    taskHistory.insertBefore(completedTask, taskHistory.firstChild);
+
+                                                    // Clear current task display
+                                                    document.getElementById('currentTask').innerHTML = '<div class="alert alert-light border" style="color: var(--secondary-color);">暂无进行中的任务</div>';
+
+                                                    // Clear selected files after successful processing
+                                                    if (messageData.status === 'cancelled') {
+                                                        selectedFiles = [];
+                                                        // Reset UI selections
+                                                        document.querySelectorAll('.file-tree li[style*="background-color"]').forEach(item => {
+                                                            item.style.backgroundColor = '';
+                                                            item.style.fontWeight = '';
+                                                        });
+                                                    }
+
+                                                    document.getElementById('taskProgress').parentElement.remove();
+                                                    document.getElementById('cancelTaskBtn').parentElement.remove();
+
+                                                    // Enable the start process button
+                                                    document.getElementById('startProcess').disabled = false;
+                                                }
                                                 break;
 
                                             case 'completion':
@@ -574,7 +645,7 @@
                                                     }
 
                                                     document.getElementById('taskProgress').parentElement.remove();
-                                                    document.getElementById('cancelTask').parentElement.remove();
+                                                    document.getElementById('cancelTaskBtn').parentElement.remove();
 
                                                     // Enable the start process button
                                                     document.getElementById('startProcess').disabled = false;
@@ -684,41 +755,6 @@
                     default:
                         return 'task-status status-pending';
                 }
-            }
-
-            // Cancel task event delegation
-            document.getElementById('currentTask').addEventListener('click', function(e) {
-                const cancelBtn = e.target.closest('#cancelTask');
-                if (cancelBtn) {
-                    const taskId = cancelBtn.getAttribute('data-task-id');
-                    if (taskId) {
-                        cancelTask(taskId);
-                    }
-                }
-            });
-
-            // Cancel task function
-            function cancelTask(taskId) {
-                if (!confirm('确定要取消此任务吗？')) {
-                    return;
-                }
-
-                fetch(`/api/tasks/${taskId}/cancel`, {
-                    method: 'POST'
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.id) {
-                        appendToLog(`任务 ${taskId.substring(0, 8)} 已取消`);
-                    } else {
-                        appendToLog(`取消任务失败: ${data.error}`);
-                        console.error('Failed to cancel task:', data.error);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error cancelling task:', error);
-                    appendToLog('取消任务失败: ' + error.message);
-                });
             }
         });
     </script>

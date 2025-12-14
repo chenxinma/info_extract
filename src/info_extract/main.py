@@ -51,7 +51,7 @@ async def main():
 
     executor.clean_processing_dir()
     
-    async for _ in executor.pipeline.run():
+    async for _ in executor.run(profile_manager):
         pass
 
     print("文件处理完成！")

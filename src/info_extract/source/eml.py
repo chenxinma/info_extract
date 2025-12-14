@@ -6,6 +6,7 @@ from typing import AsyncGenerator, Optional
 
 from markdownify import markdownify as md
 
+from ..config.profile_manager import ProfileManager
 from ..pipeline import StepResult
 from .email import EmailReader
 
@@ -14,7 +15,7 @@ logger = logging.getLogger(__name__)
 class EMLReader(EmailReader):
     """处理eml邮件文件，提取正文内容"""
 
-    async def run(self) -> AsyncGenerator[StepResult, None]:
+    async def run(self, profile_manager: ProfileManager) -> AsyncGenerator[StepResult, None]:
         eml_files = self.source_files(self.source_dir, "*.eml")
         logger.info(f"找到 {len(eml_files)} 个eml文件")
 

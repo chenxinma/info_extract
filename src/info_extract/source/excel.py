@@ -11,6 +11,7 @@ import pandas as pd
 from typing_extensions import Generator
 
 from ..pipeline import Step, StepResult
+from ..config.profile_manager import ProfileManager
 
 logger = logging.getLogger(__name__)
 warnings.simplefilter("ignore", category=UserWarning)
@@ -39,7 +40,7 @@ class ExcelReader(Step):
         self.processing_dir.mkdir(exist_ok=True)
         self.meta_list:list[SheetMeta] = []
     
-    async def run(self) -> AsyncGenerator[StepResult, None]:
+    async def run(self, profile_manager: ProfileManager) -> AsyncGenerator[StepResult, None]:
         """
         处理Excel文件xls或xlsx，提取sheet内容
         
@@ -52,7 +53,11 @@ class ExcelReader(Step):
         for excel_file in _files:
             if excel_file.stem.endswith("~"):
                 continue
-            book = load_workbook(str(excel_file))
+            try:
+                book = load_workbook(str(excel_file))
+            except Exception as exp:
+                logger.warning(f"加载excel文件 {excel_file} 异常 {str(exp)}")
+                continue
             for sheet_name in book.sheetnames:
                 sheet = book[sheet_name]
                 # 检查sheet是否为隐藏状态，如果是则跳过

@@ -5,7 +5,8 @@ from pathlib import Path
 from openpyxl import Workbook
 from typing import AsyncGenerator, List, Dict, Any, TypedDict
 
-from ..config import output_info_items
+from info_extract.config.profile_manager import ProfileManager
+
 from ..pipeline import Step, StepResult
 from tqdm import tqdm
 
@@ -22,17 +23,15 @@ class ExcelExporter(Step):
         self.processing_dir = processing_dir
         self.destination_dir = destination_dir
         
-        self.columns = output_info_items()
-        
         # 确保输出目录存在
         os.makedirs(self.destination_dir, exist_ok=True)
 
-    async def run(self) -> AsyncGenerator[StepResult, None]:
+    async def run(self, profile_manager: ProfileManager) -> AsyncGenerator[StepResult, None]:
         # 收集所有 JSON 文件
         if not self.pre_results:
             logger.warning("未找到任何 JSON 文件，跳过导出。")
             return
-
+        self.columns = profile_manager.output_info_items()
         # 按文件分组
         grouped = self._grouping([file_path for file_path, _ in self.pre_results])
         for group_name, file_list in tqdm(grouped.items(), desc="导出工作表"):

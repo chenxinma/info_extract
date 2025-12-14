@@ -3,14 +3,16 @@ UI module for the info_extract project.
 Provides a web interface for configuring the info_item table in standard.db and
 managing file processing tasks.
 """
+import asyncio
 import logging
 import os
 import json
 from threading import Timer
+import threading
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Tuple
 import webbrowser
 from importlib.resources import files
 
@@ -20,9 +22,10 @@ from fastapi.responses import HTMLResponse, FileResponse, JSONResponse, Streamin
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
+from .executor import Executor
 from .config.profile_manager import ProfileManager
 from .config.config_models import InfoItem
-from .pipeline import Pipeline
+
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +83,7 @@ class UI:
 
         # Task management
         self.tasks: Dict[str, Dict] = {}
+        self.running_executors: Dict[str, Tuple[Executor, threading.Event]] = {}
         self.work_dir: str = work_dir
 
         # Add CORS middleware
@@ -341,7 +345,7 @@ class UI:
 
         # Streaming task processing API
         @self.app.post('/api/tasks/stream')
-        async def create_task_stream(request: Request):
+        async def create_task_stream(request: Request, profile_manager: ProfileManager = Depends(self.get_profile_manager)):
             """Create a new processing task and stream progress updates."""
             data = await request.json()
             work_dir: str = data.get('working_directory', self.work_dir)
@@ -369,44 +373,63 @@ class UI:
                 """Generate a stream of progress updates."""
                 # Yield initial task info
                 yield f"data: {json.dumps({'type': 'task_info', 'data': task})}\n\n"
-
+                await asyncio.sleep(0.1)
                 # Update task status to started
                 task['status'] = 'processing'
                 task['started_at'] = datetime.now().isoformat()
 
                 # Yield status update
                 yield f"data: {json.dumps({'type': 'status_update', 'data': {'task_id': task_id, 'status': 'processing', 'progress': 0}})}\n\n"
-
+                await asyncio.sleep(0.1)
                 try:
                     # Import source modules dynamically to process different file types
                     from .executor import Executor
+                    import threading
 
                     executor = Executor(work_dir, specific_files=files)
                     executor.clean_processing_dir()
+                    
+                    # Create cancellation event
+                    cancellation_event = threading.Event()
+                    # Store executor and cancellation event
+                    self.running_executors[task_id] = (executor, cancellation_event)
 
                     p = 0
 
-                    # Process all files at once using the executor
-                    async for txt in executor.pipeline.run():
+                    # Process all files at once using the executor with cancellation support
+                    async for txt in executor.run(profile_manager, cancellation_event=cancellation_event):
+                        # Check if task was cancelled
+                        if cancellation_event.is_set():
+                            break
+                            
                         p += int((100 - p) / 10)
                         task['progress'] = p
                         yield f"data: {json.dumps({'type': 'progress_update', 'data': {'task_id': task_id, 'progress': p, 'log': txt}})}\n\n"
+                        await asyncio.sleep(1)
 
-                    # Update progress to 100% after processing
-                    task['progress'] = 100
+                    # Check if task was cancelled
+                    if cancellation_event.is_set():
+                        # Update task status to cancelled
+                        task['status'] = 'cancelled'
+                        task['completed_at'] = datetime.now().isoformat()
+                        # Yield cancellation update
+                        yield f"data: {json.dumps({'type': 'cancellation', 'data': {'task_id': task_id, 'status': 'cancelled'}})}\n\n"
+                    else:
+                        # Update progress to 100% after processing
+                        task['progress'] = 100
 
-                    # Yield progress update
-                    yield f"data: {json.dumps({'type': 'progress_update', 'data': {'task_id': task_id, 'progress': 100}})}\n\n"
+                        # Yield progress update
+                        yield f"data: {json.dumps({'type': 'progress_update', 'data': {'task_id': task_id, 'progress': 100}})}\n\n"
 
-                    # Update task status to completed
-                    task['status'] = 'completed'
-                    task['completed_at'] = datetime.now().isoformat()
-                    task['progress'] = 100
-                    # Add the result files to the task
-                    task['result_files'] = [f for f in os.listdir(executor.destination_dir) if os.path.isfile(os.path.join(executor.destination_dir, f))]
+                        # Update task status to completed
+                        task['status'] = 'completed'
+                        task['completed_at'] = datetime.now().isoformat()
+                        task['progress'] = 100
+                        # Add the result files to the task
+                        task['result_files'] = [f for f in os.listdir(executor.destination_dir) if os.path.isfile(os.path.join(executor.destination_dir, f))]
 
-                    # Yield completion update
-                    yield f"data: {json.dumps({'type': 'completion', 'data': {'task_id': task_id, 'status': 'completed', 'progress': 100, 'result_files': task['result_files']}})}\n\n"
+                        # Yield completion update
+                        yield f"data: {json.dumps({'type': 'completion', 'data': {'task_id': task_id, 'status': 'completed', 'progress': 100, 'result_files': task['result_files']}})}\n\n"
 
                 except Exception as e:
                     # Update task status to failed
@@ -416,6 +439,10 @@ class UI:
 
                     # Yield error update
                     yield f"data: {json.dumps({'type': 'error', 'data': {'task_id': task_id, 'status': 'failed', 'error': str(e)}})}\n\n"
+                finally:
+                    # Remove from running executors
+                    if task_id in self.running_executors:
+                        del self.running_executors[task_id]
 
             # Return the streaming response
             return StreamingResponse(generate_progress_stream(), media_type="text/plain")
@@ -437,6 +464,11 @@ class UI:
 
             if task['status'] in ['completed', 'failed']:
                 return JSONResponse(content={'error': 'Cannot cancel completed or failed task'}, status_code=400)
+
+            # Set cancellation event if task is running
+            if task_id in self.running_executors:
+                _, cancellation_event = self.running_executors[task_id]
+                cancellation_event.set()
 
             # Update task status to cancelled
             task['status'] = 'cancelled'

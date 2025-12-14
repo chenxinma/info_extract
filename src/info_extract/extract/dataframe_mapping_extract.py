@@ -15,8 +15,8 @@ from tqdm import tqdm
 from transformers import BertTokenizer, BertModel
 from sklearn.metrics.pairwise import cosine_similarity
 
-from ..pipeline import StepResult
-from ..config import output_info_items
+from ..pipeline import Step, StepResult
+from ..config.profile_manager import ProfileManager
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -59,19 +59,19 @@ class ColumnUtil:
         
         return cleaned
 
-class DataFrameMappingExtract:
+class DataFrameMappingExtract(Step):
     def __init__(self, processing_dir: str = "processing") -> None:
-        self.processing_dir = Path(processing_dir)
+        self.processing_dir = Path(processing_dir)  
 
-        info_items = output_info_items()
+    async def run(self, profile_manager: ProfileManager) -> AsyncGenerator[StepResult, None]:
+        """
+        运行DataFrame映射提取
+        """
+        info_items = profile_manager.output_info_items()
         self.standard_headers = [ item["name"] for item in info_items ]
         standard_describes = [ item["describe"] for item in info_items ]
         self.normalizer = SemanticHeaderNormalizer(self.standard_headers, standard_describes)
 
-    async def run(self) -> AsyncGenerator[StepResult, None]:
-        """
-        运行DataFrame映射提取
-        """
         if self.pre_results is None or len(self.pre_results) == 0:
             return
         
@@ -91,7 +91,7 @@ class DataFrameMappingExtract:
 
         df_headers = raw_df.columns.tolist()
         result = self.normalizer.normalize(df_headers, min_confidence=0.4)
-        sql = self.make_sql(result['normalized'], sheet_pq_path.stem)
+        sql = self.make_sql(result['normalized'], sheet_pq_path.stem)  # pyright: ignore[reportArgumentType]
         
         # 运行取数脚本
         result_df = self._run_sql(sql, raw_df)
@@ -118,8 +118,8 @@ class DataFrameMappingExtract:
             elif any([ w in sheet_name for w in ["入职", "增员"]]):
                 return "'入职' as \"作业\""
         
-        has_join_date = any([ not n[1] is None for n in normalized if n[0] == "入职日期"])
-        has_leave_date = any([ not n[1] is None for n in normalized if n[0] == "离职日期"])
+        has_join_date = any([ not n[1] is None for n in normalized if n[0] == "入职日期"]) # pyright: ignore[reportGeneralTypeIssues, reportOptionalSubscript, reportIndexIssue]
+        has_leave_date = any([ not n[1] is None for n in normalized if n[0] == "离职日期"]) # pyright: ignore[reportGeneralTypeIssues, reportOptionalSubscript, reportIndexIssue]
         if has_join_date and not has_leave_date:
             return "'入职' as \"作业\""
         elif not has_join_date and has_leave_date:
@@ -135,7 +135,7 @@ class DataFrameMappingExtract:
 
     def make_sql(self, normalized: Normalized, sheet_name:str) -> str:
         select_columns = [self.distinguish_work_type(normalized, sheet_name)]
-        for std_header, input_header, _ in normalized:
+        for std_header, input_header, _ in normalized: # pyright: ignore[reportArgumentType, reportGeneralTypeIssues]
             if "作业" == std_header:
                 continue
 
@@ -199,7 +199,7 @@ load_dotenv()
 MODEL_PATH = os.environ.get("TEXT2VEC_MODEL", "Jerry0/text2vec-base-chinese")
 
 class SemanticHeaderNormalizer:
-    def __init__(self, standard_headers: list[str], standard_describes: list[str]) -> None:
+    def __init__(self, standard_headers: list[str], standard_describes: list[str|None]) -> None:
         self.standard_headers = standard_headers        
         # self.model = SentenceModel('')
         self.tokenizer = BertTokenizer.from_pretrained(MODEL_PATH)
@@ -209,7 +209,7 @@ class SemanticHeaderNormalizer:
         # 加载说明信息
         for i, (label, describe) in enumerate(zip(standard_headers, standard_describes)):
             self.standard_header_index[label] = i
-            for synonym in self._get_synonyms(describe):
+            for synonym in self._get_synonyms(describe or ""):
                 self.standard_header_index[synonym] = i
         
         self.standard_representations = self._get_representations(list(self.standard_header_index.keys()))
@@ -251,7 +251,7 @@ class SemanticHeaderNormalizer:
             model_output = self.model(**encoded_input)
         # Perform pooling. In this case, mean pooling.
         sentence_embeddings = self._mean_pooling(model_output, encoded_input['attention_mask'])
-        return sentence_embeddings
+        return sentence_embeddings  # pyright: ignore[reportReturnType]
     
     def semantic_similarity(
         self,
@@ -293,7 +293,7 @@ class SemanticHeaderNormalizer:
             # 分配成功
             assigned_std.add(std_idx)
             assigned_input.add(inp_idx)
-            result[std_idx] = (
+            result[std_idx] = ( # pyright: ignore
                 self.standard_headers[std_idx],
                 input_headers[inp_idx],
                 float(score)
@@ -302,9 +302,9 @@ class SemanticHeaderNormalizer:
         # Step 5: 补全未匹配的标准字段
         for std_idx in range(num_std):
             if result[std_idx] is None:
-                result[std_idx] = (self.standard_headers[std_idx], None, 0.0)
+                result[std_idx] = (self.standard_headers[std_idx], None, 0.0) # pyright: ignore
 
-        return result  # list of (std_header, input_header, score)
+        return result  # list of (std_header, input_header, score) # pyright: ignore
 
     def normalize(self, input_headers: list[str], 
                   min_confidence: float = 0.5) -> NormalizeOutput:

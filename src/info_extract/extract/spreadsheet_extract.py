@@ -13,10 +13,9 @@ from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 from tqdm import tqdm
 
+from ..config.profile_manager import ProfileManager
 from ..ace import PlaybookManager, curate, reflect
-from ..config import (generate_info_item_define_prompt, 
-                      generate_sample_sql, 
-                      get_cached_mapping_sql, 
+from ..config import (get_cached_mapping_sql, 
                       save_mapping_sql)
 from ..pipeline import Step, StepResult
 
@@ -51,23 +50,23 @@ class SpreadsheetExtractor(Step):
             - 只要完成列与信息项的映射。
             """)
     
-    async def run(self) -> AsyncGenerator[StepResult, None]:
+    async def run(self, profile_manager: ProfileManager) -> AsyncGenerator[StepResult, None]:
         if self.pre_results is None or len(self.pre_results) == 0:
             return
         
         if self.pre_results is not None:
             for sheet_pq, _ in tqdm(self.pre_results, desc="信息表提取"):
                 _sheet_pq_path = Path(sheet_pq)
-                res = await self._fetch_one(_sheet_pq_path)
+                res = await self._fetch_one(_sheet_pq_path, profile_manager)
                 if res:
                     yield res
 
-    async def _fetch_one(self, sheet_pq_path:Path) -> Tuple[str, Any] | None:
+    async def _fetch_one(self, sheet_pq_path:Path, profile_manager: ProfileManager) -> Tuple[str, Any] | None:
         raw_df = pd.read_parquet(sheet_pq_path)
         raw_df = self._clean_columns(raw_df)
 
         hash_key = self._hash_columns(raw_df.columns)
-        cached_sql = get_cached_mapping_sql(hash_key)
+        cached_sql = get_cached_mapping_sql(profile_manager.get_config_db(), hash_key)
         result_df = None
         
         if cached_sql:
@@ -77,9 +76,9 @@ class SpreadsheetExtractor(Step):
             # 生成取数脚本
             result = await self.agent.run(
                 textwrap.dedent(f"""
-                {generate_info_item_define_prompt()}
+                {profile_manager.generate_info_item_define_prompt()}
                 {playbookManager.list_playbooks()}
-                {generate_sample_sql()}
+                {profile_manager.generate_sample_sql()}
                 df's column names：{raw_df.columns}
                 df_sheet_name：{sheet_pq_path.stem}
                 生成查询 **df** 获取信息项的SQL。
@@ -88,7 +87,7 @@ class SpreadsheetExtractor(Step):
             try:
                 # 运行取数脚本
                 result_df = self._run_sql(result.output, raw_df)
-                save_mapping_sql(hash_key, result.output)
+                save_mapping_sql(profile_manager.get_config_db(), hash_key, result.output)
             except Exception as exp:
                 logger.warning(f"取数异常 {str(exp)}")
                 logger.warning(result.output)

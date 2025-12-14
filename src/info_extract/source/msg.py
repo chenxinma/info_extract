@@ -10,6 +10,7 @@ from msg_parser import MsOxMessage
 from markdownify import markdownify as md
 from typing_extensions import Generator
 
+from ..config.profile_manager import ProfileManager
 from ..pipeline import StepResult
 from .email import EmailReader
 
@@ -19,7 +20,7 @@ logger = logging.getLogger(__name__)
 class MSGReader(EmailReader):
     """处理msg邮件文件，提取正文内容"""
 
-    async def run(self) -> AsyncGenerator[StepResult, None]:
+    async def run(self, profile_manager: ProfileManager) -> AsyncGenerator[StepResult, None]:
         """处理source目录下的所有eml和msg文件"""
         # 获取所有msg文件
         
