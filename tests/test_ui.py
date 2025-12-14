@@ -11,6 +11,7 @@ import unittest
 from fastapi.testclient import TestClient
 from fastapi import HTTPException
 
+from src.info_extract.config import profile_manager
 from src.info_extract.ui import UI
 from src.info_extract.config.config_db import ConfigDB
 from src.info_extract.config.config_models import InfoItem
@@ -27,7 +28,7 @@ class TestUIInitialization(unittest.TestCase):
         """Test that UI initializes with correct components."""
         ui = UI(db_path=self.db_path, work_dir=self.work_dir)
         
-        self.assertIsInstance(ui.config_db, ConfigDB)
+        self.assertIsInstance(profile_manager.config_db, ConfigDB)
         self.assertEqual(ui.work_dir, self.work_dir)
         self.assertEqual(len(ui.tasks), 0)
 
@@ -35,7 +36,7 @@ class TestUIInitialization(unittest.TestCase):
         """Test UI initialization with default parameters."""
         ui = UI()
         
-        self.assertIsInstance(ui.config_db, ConfigDB)
+        self.assertIsInstance(profile_manager.config_db, ConfigDB)
         self.assertEqual(ui.work_dir, "./workdir")
         self.assertEqual(len(ui.tasks), 0)
 
@@ -58,7 +59,8 @@ class TestUIRoutesConfig(unittest.TestCase):
             sort_no=1,
             sample_col_name="test_sample"
         )
-        self.created_id = self.ui.config_db.add_item(self.test_item)
+        
+        self.created_id = profile_manager.config_db.add_item(self.test_item)
 
     def test_get_info_items(self):
         """Test retrieving all info items."""
@@ -73,7 +75,7 @@ class TestUIRoutesConfig(unittest.TestCase):
 
     def test_get_info_items_error(self):
         """Test error handling in get_info_items."""
-        with patch.object(self.ui.config_db, 'get_info_items', side_effect=Exception("Database error")):
+        with patch.object(profile_manager.config_db, 'get_info_items', side_effect=Exception("Database error")):
             response = self.client.get("/config/info_item")
             
         self.assertEqual(response.status_code, 500)
@@ -159,7 +161,7 @@ class TestUIRoutesConfig(unittest.TestCase):
         self.assertEqual(response.json()["message"], "Info item deleted successfully")
         
         # Verify the item was actually deleted
-        items = self.ui.config_db.get_info_items()
+        items = profile_manager.config_db.get_info_items()
         self.assertEqual(len(items), 0)
 
     def test_delete_info_item_not_found(self):
@@ -174,8 +176,8 @@ class TestUIRoutesConfig(unittest.TestCase):
         # Create additional items to sort
         item2 = InfoItem(id=0, label="Item 2", data_type="str", sort_no=2, describe="", sample_col_name="")
         item3 = InfoItem(id=0, label="Item 3", data_type="str", sort_no=3, describe="object3", sample_col_name="obj3")
-        id2 = self.ui.config_db.add_item(item2)
-        id3 = self.ui.config_db.add_item(item3)
+        id2 = profile_manager.config_db.add_item(item2)
+        id3 = profile_manager.config_db.add_item(item3)
         
         sort_data = {
             "items": [
@@ -191,7 +193,7 @@ class TestUIRoutesConfig(unittest.TestCase):
         self.assertEqual(response.json()["message"], "Sort order updated successfully")
         
         # Verify the sort order was updated
-        items = self.ui.config_db.get_info_items()
+        items = profile_manager.config_db.get_info_items()
         for item in items:
             if item.id == self.created_id:
                 self.assertEqual(item.sort_no, 1)
@@ -509,6 +511,48 @@ class TestUIRoutesTaskManagement(unittest.TestCase):
         
         self.assertEqual(response.status_code, 404)
         self.assertIn("error", response.json())
+
+    def test_cancel_running_task_with_executor(self):
+        """Test canceling a running task with actual executor cancellation."""
+        import threading
+        import time
+        
+        task_id = "test-task-id"
+        task_data = {
+            'id': task_id,
+            'status': 'processing',  # Task must be in a cancellable state
+            'progress': 50,
+            'created_at': '2022-01-01T00:00:00',
+            'started_at': '2022-01-01T00:00:00',
+            'completed_at': None,
+            'error': None,
+            'result_files': [],
+            'files': []
+        }
+        self.ui.tasks[task_id] = task_data
+        
+        # Create a mock executor and cancellation event
+        mock_executor = MagicMock()
+        cancellation_event = threading.Event()
+        self.ui.running_executors[task_id] = (mock_executor, cancellation_event)
+        
+        # Verify cancellation event is not set initially
+        self.assertFalse(cancellation_event.is_set())
+        
+        # Call cancel API
+        response = self.client.post(f"/api/tasks/{task_id}/cancel")
+        
+        # Verify response
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["status"], "cancelled")
+        self.assertIsNotNone(data["completed_at"])
+        
+        # Verify cancellation event was set
+        self.assertTrue(cancellation_event.is_set())
+        
+        # Verify task was removed from running_executors
+        self.assertNotIn(task_id, self.ui.running_executors)
 
 
 class TestUIRoutesResults(unittest.TestCase):
