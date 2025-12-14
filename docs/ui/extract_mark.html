@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>划词分类标记 Demo（Markdown 预览版）</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/highlight.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f5f7fa;
+            padding: 20px;
+        }
+
+        .demo-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .header {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .header h2 {
+            color: #333;
+            font-size: 22px;
+            margin-bottom: 8px;
+        }
+
+        .header .tip {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        /* 分类选项区域（置顶） */
+        .category-options {
+            margin-bottom: 15px;
+            padding: 12px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .category-btn {
+            padding: 6px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+            color: white;
+        }
+
+        /* 不同分类按钮样式 */
+        .btn-noun {
+            background-color: #0288d1;
+        }
+
+        .btn-noun:hover {
+            background-color: #0277bd;
+        }
+
+        .btn-verb {
+            background-color: #2e7d32;
+        }
+
+        .btn-verb:hover {
+            background-color: #256929;
+        }
+
+        .btn-adjective {
+            background-color: #f57c00;
+        }
+
+        .btn-adjective:hover {
+            background-color: #e67100;
+        }
+
+        .btn-other {
+            background-color: #8e24aa;
+        }
+
+        .btn-other:hover {
+            background-color: #7b1fa2;
+        }
+
+        .category-options .disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Markdown 编辑与预览区域 */
+        .markdown-container {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .editor-wrap, .preview-wrap {
+            flex: 1;
+            min-height: 400px;
+        }
+
+        .editor-wrap h3, .preview-wrap h3 {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        /* 可编辑文本区域（Markdown 编辑器） */
+        #text-area {
+            width: 100%;
+            min-height: 400px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            line-height: 1.8;
+            outline: none;
+            user-select: text;
+            background: #fff;
+            transition: border-color 0.3s;
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+
+        #text-area:focus {
+            border-color: #409eff;
+        }
+
+        /* 隐藏的纯文本存储区域 */
+        #markdown-source {
+            display: none;
+        }
+
+        /* Markdown 预览区域 */
+        #preview-area {
+            width: 100%;
+            min-height: 400px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            line-height: 1.8;
+            background: #fff;
+            overflow-y: auto;
+        }
+
+        /* 不同分类的文本样式标记（编辑器+预览区通用） */
+        .noun {
+            background-color: #e1f5fe;
+            color: #0288d1 !important; /* 强制覆盖预览区样式 */
+            padding: 2px 4px;
+            border-radius: 3px;
+            margin: 0 1px;
+        }
+
+        .verb {
+            background-color: #e8f5e9;
+            color: #2e7d32 !important;
+            padding: 2px 4px;
+            border-radius: 3px;
+            margin: 0 1px;
+        }
+
+        .adjective {
+            background-color: #fff3e0;
+            color: #f57c00 !important;
+            padding: 2px 4px;
+            border-radius: 3px;
+            margin: 0 1px;
+        }
+
+        .other {
+            background-color: #f3e5f5;
+            color: #8e24aa !important;
+            padding: 2px 4px;
+            border-radius: 3px;
+            margin: 0 1px;
+        }
+
+        /* 分类数据区域 */
+        .data-section {
+            margin-top: 30px;
+        }
+
+        .data-section h3 {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        #category-data {
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #666;
+            white-space: pre-wrap;
+            min-height: 80px;
+        }
+
+        /* 按钮样式 */
+        .btn-group {
+            margin-top: 15px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+            transition: background-color 0.2s;
+        }
+
+        .btn-reset {
+            background-color: #ff6b6b;
+            color: white;
+        }
+
+        .btn-reset:hover {
+            background-color: #ff5252;
+        }
+
+        .btn-export {
+            background-color: #409eff;
+            color: white;
+        }
+
+        .btn-export:hover {
+            background-color: #3399ff;
+        }
+
+        /* 响应式适配 */
+        @media (max-width: 768px) {
+            .markdown-container {
+                flex-direction: column;
+            }
+
+            .editor-wrap, .preview-wrap {
+                min-height: 300px;
+            }
+
+            #text-area, #preview-area {
+                min-height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <div class="header">
+            <h2>文本划词分类标记工具（Markdown 预览版）</h2>
+            <div class="tip">
+                1. 在左侧编辑区域以Markdown格式粘贴/输入文本<br>
+                2. 选中任意词汇，点击上方分类按钮完成标定<br>
+                3. 右侧实时预览Markdown渲染效果（包含分类标记样式）<br>
+                4. 分类数据会实时显示在下方区域，支持重置和导出
+            </div>
+        </div>
+
+        <!-- 分类选项区域（固定在文本框上方） -->
+        <div class="category-options" id="category-options">
+            <button class="category-btn btn-noun" data-type="noun" disabled>名词</button>
+            <button class="category-btn btn-verb" data-type="verb" disabled>动词</button>
+            <button class="category-btn btn-adjective" data-type="adjective" disabled>形容词</button>
+            <button class="category-btn btn-other" data-type="other" disabled>其他</button>
+        </div>
+
+        <!-- Markdown 编辑与预览区域 -->
+        <div class="markdown-container">
+            <div class="editor-wrap">
+                <h3>Markdown 编辑区</h3>
+                <div id="text-area" contenteditable="true" placeholder="请以Markdown格式粘贴或输入文本..."></div>
+                <!-- 隐藏的纯 Markdown 文本存储 -->
+                <textarea id="markdown-source"></textarea>
+            </div>
+            <div class="preview-wrap">
+                <h3>Markdown 预览区</h3>
+                <div id="preview-area"></div>
+            </div>
+        </div>
+
+        <!-- 分类数据展示区域 -->
+        <div class="data-section">
+            <h3>分类数据记录：</h3>
+            <div id="category-data">暂无分类数据</div>
+
+            <div class="btn-group">
+                <button class="btn btn-reset" id="reset-btn">重置所有内容</button>
+                <button class="btn btn-export" id="export-btn">导出分类数据</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========== 元素获取 ==========
+        const textArea = document.getElementById('text-area');
+        const markdownSource = document.getElementById('markdown-source');
+        const previewArea = document.getElementById('preview-area');
+        const categoryBtns = document.querySelectorAll('.category-btn');
+        const categoryData = document.getElementById('category-data');
+        const resetBtn = document.getElementById('reset-btn');
+        const exportBtn = document.getElementById('export-btn');
+
+        // ========== 全局变量 ==========
+        // 存储选中的范围对象
+        let selectedRange = null;
+        // 存储选中的文本内容
+        let selectedText = '';
+        // 存储分类数据（格式：[{ text: '词汇', type: 'noun', typeName: '名词' }, ...]）
+        let categoryRecord = [];
+
+        // ========== 初始化 ==========
+        // 初始化marked，开启代码高亮
+        marked.setOptions({
+            highlight: (code, lang) => {
+                if (lang && hljs.getLanguage(lang)) {
+                    return hljs.highlight(code, { language: lang }).value;
+                }
+                return hljs.highlightAuto(code).value;
+            },
+            breaks: true, // 换行符转换为<br>
+            gfm: true // 支持GitHub风格的Markdown
+        });
+
+        // 初始预览（空内容）
+        updatePreview();
+
+        // ========== 核心功能 ==========
+        // 监听鼠标松开/选择事件（划词结束）
+        textArea.addEventListener('mouseup', handleSelection);
+        textArea.addEventListener('keyup', handleSelection); // 兼容键盘选择文本的情况
+        textArea.addEventListener('selectionchange', handleSelection); // 实时监听选中文本变化
+
+        // 监听编辑区域输入，同步纯文本并更新预览
+        textArea.addEventListener('input', () => {
+            syncMarkdownSource();
+            updatePreview();
+        });
+
+        // 处理选中文本的逻辑
+        function handleSelection() {
+            const selection = window.getSelection();
+            selectedText = selection.toString().trim();
+
+            // 更新分类按钮的可用状态
+            categoryBtns.forEach(btn => {
+                if (selectedText) {
+                    btn.disabled = false;
+                    btn.classList.remove('disabled');
+                } else {
+                    btn.disabled = true;
+                    btn.classList.add('disabled');
+                }
+            });
+
+            // 保存选中范围（仅当有选中文本时）
+            if (selectedText && selection.rangeCount > 0) {
+                selectedRange = selection.getRangeAt(0);
+            } else {
+                selectedRange = null;
+            }
+        }
+
+        // 分类按钮点击事件：标记文本 + 记录数据 + 更新预览
+        categoryBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (!selectedRange || !selectedText) return;
+
+                const type = btn.getAttribute('data-type');
+                const typeName = btn.textContent;
+
+                // 替换选中文本为带样式的span
+                replaceSelectedText(type, selectedText);
+                // 记录分类数据
+                addCategoryRecord(selectedText, type, typeName);
+                // 清除选中状态
+                window.getSelection().removeAllRanges();
+                // 禁用分类按钮
+                categoryBtns.forEach(b => {
+                    b.disabled = true;
+                    b.classList.add('disabled');
+                });
+                // 同步纯文本并更新预览
+                syncMarkdownSource();
+                updatePreview();
+            });
+        });
+
+        // ========== 工具函数 ==========
+        /**
+         * 同步编辑区的内容到纯文本 Markdown 源（处理span标签为占位符）
+         */
+        function syncMarkdownSource() {
+            // 复制编辑区的DOM结构，避免修改原DOM
+            const clone = textArea.cloneNode(true);
+            // 将所有分类span替换为占位符 [[type:文本]]
+            const spans = clone.querySelectorAll('span[noun], span[verb], span[adjective], span[other]');
+            spans.forEach(span => {
+                const type = Array.from(span.classList).find(cls => ['noun', 'verb', 'adjective', 'other'].includes(cls));
+                const text = span.textContent;
+                const placeholder = `[[${type}:${text}]]`;
+                const textNode = document.createTextNode(placeholder);
+                span.parentNode.replaceChild(textNode, span);
+            });
+            // 提取纯文本（处理换行和空格）
+            let pureText = clone.textContent || '';
+            // 修复contenteditable的换行问题（将\n替换为\r\n，保持Markdown换行）
+            pureText = pureText.replace(/\n/g, '\r\n');
+            markdownSource.value = pureText;
+        }
+
+        /**
+         * 将占位符还原为带样式的span标签
+         * @param {string} html - marked解析后的HTML字符串
+         * @returns {string} 处理后的HTML字符串
+         */
+        function restorePlaceholders(html) {
+            // 匹配占位符 [[type:文本]]
+            const regex = /\[\[(\w+):([^\]]+)\]\]/g;
+            return html.replace(regex, (match, type, text) => {
+                // 还原为span标签
+                return `<span class="${type}">${text}</span>`;
+            });
+        }
+
+        /**
+         * 替换选中的文本为带分类样式的span
+         * @param {string} type - 分类类型（noun/verb等）
+         * @param {string} text - 选中的文本
+         */
+        function replaceSelectedText(type, text) {
+            // 避免重复包裹（如果选中文本已经是标记过的，先还原）
+            const selectedNode = selectedRange.commonAncestorContainer.parentElement;
+            if (selectedNode.classList.contains(type)) {
+                return;
+            }
+
+            // 创建span元素（添加分类类名和原始文本属性）
+            const span = document.createElement('span');
+            span.className = type;
+            span.textContent = text;
+            span.setAttribute('data-text', text);
+
+            // 替换选中内容
+            selectedRange.deleteContents();
+            selectedRange.insertNode(span);
+
+            // 将光标移到span后方，提升编辑体验
+            const newRange = document.createRange();
+            newRange.setStartAfter(span);
+            newRange.collapse(true);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(newRange);
+        }
+
+        /**
+         * 添加分类数据到记录，并更新展示
+         * @param {string} text - 词汇文本
+         * @param {string} type - 分类类型
+         * @param {string} typeName - 分类名称（名词/动词等）
+         */
+        function addCategoryRecord(text, type, typeName) {
+            // 去重：如果已有相同词汇的记录，替换为最新分类
+            const existingIndex = categoryRecord.findIndex(item => item.text === text);
+            if (existingIndex > -1) {
+                categoryRecord[existingIndex] = { text, type, typeName };
+            } else {
+                categoryRecord.push({ text, type, typeName });
+            }
+
+            // 更新数据展示区域
+            updateCategoryDataDisplay();
+        }
+
+        /**
+         * 更新分类数据展示区域
+         */
+        function updateCategoryDataDisplay() {
+            if (categoryRecord.length === 0) {
+                categoryData.textContent = '暂无分类数据';
+                return;
+            }
+
+            // 格式化数据展示
+            let displayText = '';
+            categoryRecord.forEach((item, index) => {
+                displayText += `${index + 1}. 词汇：${item.text} | 分类：${item.typeName}（${item.type}）\n`;
+            });
+            categoryData.textContent = displayText;
+        }
+
+        /**
+         * 更新Markdown预览区域
+         */
+        function updatePreview() {
+            // 获取纯Markdown文本
+            const mdText = markdownSource.value || '';
+            // 解析Markdown为HTML
+            let html = marked.parse(mdText);
+            // 还原占位符为span标签
+            html = restorePlaceholders(html);
+            // 渲染到预览区
+            previewArea.innerHTML = html;
+            // 重新高亮代码块（因为替换占位符后可能破坏高亮）
+            previewArea.querySelectorAll('pre code').forEach(block => {
+                hljs.highlightElement(block);
+            });
+        }
+
+        // ========== 扩展功能 ==========
+        // 重置所有内容
+        resetBtn.addEventListener('click', () => {
+            // 清空文本区域
+            textArea.innerHTML = '';
+            // 清空纯文本源
+            markdownSource.value = '';
+            // 清空预览区域
+            previewArea.innerHTML = '';
+            // 清空分类记录
+            categoryRecord = [];
+            // 更新数据展示
+            updateCategoryDataDisplay();
+            // 禁用分类按钮
+            categoryBtns.forEach(btn => {
+                btn.disabled = true;
+                btn.classList.add('disabled');
+            });
+        });
+
+        // 导出分类数据为JSON文件
+        exportBtn.addEventListener('click', () => {
+            if (categoryRecord.length === 0) {
+                alert('暂无分类数据可导出！');
+                return;
+            }
+
+            // 将数据转换为JSON字符串
+            const jsonData = JSON.stringify(categoryRecord, null, 2);
+            const blob = new Blob([jsonData], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+
+            // 创建下载链接
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `词汇分类数据_${new Date().getTime()}.json`;
+            a.click();
+
+            // 释放URL对象
+            URL.revokeObjectURL(url);
+        });
+
+        // 为可编辑区域添加placeholder效果
+        textArea.addEventListener('input', () => {
+            if (textArea.innerHTML.trim() === '') {
+                textArea.innerHTML = ''; // 清空默认的<br>等标签
+            }
+        });
+
+        // 初始化时给编辑区添加默认提示（可选）
+        if (textArea.innerHTML.trim() === '') {
+            textArea.innerHTML = '';
+        }
+    </script>
+</body>
+</html>
