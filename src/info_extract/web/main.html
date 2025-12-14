@@ -3,143 +3,198 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>信息抽取系统 - Web界面</title>
-    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.8/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/7.0.1/css/all.min.css">
+    <title>InfoExtract - UI</title>
+    <!-- 引入Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入Font Awesome图标 -->
+    <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/7.0.1/css/all.min.css" rel="stylesheet">
     <!-- 引入统一样式文件 -->
     <link href="/static/styles.css" rel="stylesheet">
 </head>
-<body>
-    <div class="container-fluid">
-        <!-- 顶部操作栏 -->
-        <div class="header-bar">
-            <div class="container-fluid">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div class="header-title">
-                        <i class="fas fa-file-import"></i>
-                        <span>信息抽取工具</span>
+<body class="bg-gray-50 text-gray-800 font-sans h-screen flex flex-col">
+    <!-- 顶部导航 -->
+    <header class="bg-white shadow-sm border-b border-gray-200 z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex">
+                    <div class="flex-shrink-0 flex items-center text-indigo-600 font-bold text-xl">
+                        <i class="fa-solid fa-file-import mr-2"></i> InfoExtract
                     </div>
-                    <div class="header-actions">
-                        <div class="dropdown me-2">
-                            <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="fas fa-book me-1"></i><span id="currentProfileName">加载中...</span>
-                            </button>
-                            <ul class="dropdown-menu" id="profileList">
-                                <!-- Profiles will be loaded here dynamically -->
-                            </ul>
-                        </div>
-                        <button class="btn btn-outline-secondary btn-sm" id="btnSettings">
-                            <i class="fas fa-cog me-1"></i>设置
+                    <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+                        <a href="javascript:void(0)" onclick="switchView('task')" id="nav-task" class="border-indigo-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                            <i class="fa-solid fa-tasks mr-2"></i> 任务管理
+                        </a>
+                        <a href="javascript:void(0)" onclick="switchView('config')" id="nav-config" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                            <i class="fa-solid fa-cog mr-2"></i> 配置管理
+                        </a>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="relative" id="profileDropdownContainer">
+                        <button type="button" id="profileDropdown" class="flex items-center text-sm bg-white border border-gray-300 rounded-md py-1.5 px-3 text-gray-700 hover:bg-gray-50">
+                            <i class="fas fa-book mr-2"></i><span id="currentProfileName">加载中...</span>
                         </button>
+                        <ul class="absolute right-0 z-10 mt-2 w-64 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none hidden" id="profileList" role="menu" aria-orientation="vertical" aria-labelledby="profileDropdown">
+                            <!-- Profiles will be loaded here dynamically -->
+                        </ul>
                     </div>
                 </div>
             </div>
         </div>
+    </header>
 
-        <!-- 主内容区 -->
-        <div class="container-fluid" style="padding: 20px;">
-            <div class="row">
+    <!-- 主内容区 -->
+    <main class="flex-1 overflow-hidden relative">
+        <!-- 配置管理视图 -->
+        <div id="view-config" class="h-full overflow-y-auto p-6 max-w-7xl mx-auto w-full hidden">
+            <div class="bg-white shadow rounded-lg p-6 mb-6">
+                <h2 class="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                    <i class="fa-solid fa-cog mr-2"></i>配置管理
+                </h2>
+                <div class="overflow-x-auto">
+                    <iframe src="config/info_item_ui" width="100%" height="1000px" frameborder="0"></iframe>
+                </div>
+            </div>
+        </div>
+
+        <!-- 任务管理视图 -->
+        <div id="view-task" class="h-full overflow-y-auto p-6 max-w-7xl mx-auto w-full">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <!-- 左侧：工作目录浏览 -->
-                <div class="col-md-5">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5 class="mb-0"><i class="fas fa-folder me-2"></i>工作目录</h5>
-                        </div>
-                        <div class="card-body">
-                            <!-- 工作目录设置 -->
-                            <div class="mb-3">
-                                <label for="workDir" class="form-label">工作目录</label>
-                                <div class="input-group">
-                                    <input type="text" class="form-control form-control-sm" id="workDir" value="./work" placeholder="输入工作目录路径">
-                                    <button class="btn btn-outline-secondary btn-sm" type="button" id="browseDir">
-                                        <i class="fas fa-folder-open"></i>
-                                    </button>
-                                </div>
-                            </div>
+                <div class="bg-white shadow rounded-lg p-6">
+                    <div class="flex items-center mb-4">
+                        <h2 class="text-lg font-medium text-gray-900 flex items-center">
+                            <i class="fa-solid fa-folder mr-2"></i>工作目录
+                        </h2>
+                    </div>
 
-                            <!-- 文件目录树浏览 -->
-                            <div class="mb-3">
-                                <label class="form-label">目录结构</label>
-                                <div class="border rounded p-3" style="height: 300px; overflow-y: auto; background-color: white;">
-                                    <ul class="file-tree list-unstyled">
+                    <!-- 工作目录设置 -->
+                    <div class="mb-4">
+                        <label for="workDir" class="block text-sm font-medium text-gray-700 mb-1">工作目录</label>
+                        <div class="flex rounded-md shadow-sm">
+                            <input type="text" class="flex-1 min-w-0 block w-full px-3 py-2 rounded-l-md border border-gray-300 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 text-sm" id="workDir" value="./work" placeholder="输入工作目录路径">
+                            <button class="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 hover:bg-gray-100 text-sm" type="button" id="browseDir">
+                                <i class="fa-solid fa-folder-open"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 文件目录树浏览 -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">目录结构</label>
+                        <div class="border rounded-md p-4 bg-gray-50" style="height: 300px; overflow-y: auto;">
+                            <ul class="file-tree list-none space-y-1">
+                                <li>
+                                    <i class="fa-solid fa-folder text-amber-500 mr-2"></i>
+                                    <span class="font-medium">work</span>
+                                    <ul class="list-none ml-4 mt-1 space-y-1">
                                         <li>
-                                            <i class="fas fa-folder me-2 text-warning"></i>
-                                            <span class="fw-bold">work</span>
-                                            <ul class="list-unstyled ms-4 mt-2">
+                                            <i class="fa-solid fa-folder text-amber-500 mr-2"></i>
+                                            <span>source</span>
+                                            <ul class="list-none ml-4 mt-1 space-y-1">
                                                 <li>
-                                                    <i class="fas fa-folder me-2 text-warning"></i>
-                                                    <span>source</span>
-                                                    <ul class="list-unstyled ms-4 mt-2">
-                                                        <li>
-                                                            <i class="fas fa-file me-2" style="color: #666;"></i>
-                                                            <span>document.eml</span>
-                                                        </li>
-                                                        <li>
-                                                            <i class="fas fa-file me-2" style="color: #666;"></i>
-                                                            <span>data.xlsx</span>
-                                                        </li>
-                                                    </ul>
+                                                    <i class="fa-solid fa-file text-gray-500 mr-2"></i>
+                                                    <span>document.eml</span>
                                                 </li>
                                                 <li>
-                                                    <i class="fas fa-folder me-2 text-warning"></i>
-                                                    <span>processing</span>
-                                                </li>
-                                                <li>
-                                                    <i class="fas fa-folder me-2 text-warning"></i>
-                                                    <span>destination</span>
+                                                    <i class="fa-solid fa-file text-gray-500 mr-2"></i>
+                                                    <span>data.xlsx</span>
                                                 </li>
                                             </ul>
                                         </li>
+                                        <li>
+                                            <i class="fa-solid fa-folder text-amber-500 mr-2"></i>
+                                            <span>processing</span>
+                                        </li>
+                                        <li>
+                                            <i class="fa-solid fa-folder text-amber-500 mr-2"></i>
+                                            <span>destination</span>
+                                        </li>
                                     </ul>
-                                </div>
-                            </div>
+                                </li>
+                            </ul>
                         </div>
                     </div>
                 </div>
 
                 <!-- 右侧：任务管理 -->
-                <div class="col-md-7">
-                    <div class="card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0"><i class="fas fa-tasks me-2"></i>任务管理</h5>
-                            <button class="btn btn-primary" id="startProcess">
-                                <i class="fas fa-play me-1"></i>开始处理
+                <div class="space-y-6">
+                    <!-- 任务管理卡片 -->
+                    <div class="bg-white shadow rounded-lg p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-lg font-medium text-gray-900 flex items-center">
+                                <i class="fa-solid fa-tasks mr-2"></i>任务管理
+                            </h2>
+                            <button class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700" id="startProcess">
+                                <i class="fa-solid fa-play mr-2"></i>开始处理
                             </button>
                         </div>
-                        <div class="card-body">
-                            <!-- 当前任务 -->
-                            <div class="mb-4">
-                                <h6 class="text-muted" style="font-size: 0.9rem;">当前任务</h6>
-                                <div id="currentTask">
-                                    <div class="alert alert-light border" style="color: var(--secondary-color);">暂无进行中的任务</div>
+
+                        <!-- 当前任务 -->
+                        <div class="mb-6">
+                            <h3 class="text-sm font-medium text-gray-900 mb-2">当前任务</h3>
+                            <div id="currentTask">
+                                <div class="border rounded-lg p-4 text-center">
+                                    <i class="fa-solid fa-inbox text-gray-400 text-2xl mb-2"></i>
+                                    <p class="text-gray-500">暂无进行中的任务</p>
                                 </div>
                             </div>
+                        </div>
 
-                            <!-- 任务历史 -->
-                            <div>
-                                <h6 class="text-muted" style="font-size: 0.9rem;">任务历史</h6>
-                                <div id="taskHistory"></div>
+                        <!-- 任务历史 -->
+                        <div>
+                            <h3 class="text-sm font-medium text-gray-900 mb-2">任务历史</h3>
+                            <div id="taskHistory" class="space-y-2">
+                                <!-- 任务历史将在这里显示 -->
                             </div>
                         </div>
                     </div>
 
                     <!-- 实时日志 -->
-                    <div class="card mt-3">
-                        <div class="card-header">
-                            <h5 class="mb-0"><i class="fas fa-terminal me-2"></i>实时日志</h5>
-                        </div>
-                        <div class="card-body p-0">
+                    <div class="bg-white shadow rounded-lg p-6">
+                        <h2 class="text-lg font-medium text-gray-900 flex items-center mb-4">
+                            <i class="fa-solid fa-terminal mr-2"></i>实时日志
+                        </h2>
+                        <div class="border rounded-md p-4 bg-gray-50" style="height: 250px; overflow-y: auto;">
                             <div class="log-container" id="logContainer">
-                                <div class="log-entry">系统启动，等待任务...</div>
+                                <div class="log-entry text-sm py-1">系统启动，等待任务...</div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+    </main>
 
     <script src="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.8/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Switch between config view and task view
+        function switchView(view) {
+            // Hide both views
+            document.getElementById('view-config').classList.add('hidden');
+            document.getElementById('view-task').classList.add('hidden');
+
+            // Update active states in navigation
+            document.getElementById('nav-config').classList.remove('border-indigo-500', 'text-gray-900');
+            document.getElementById('nav-config').classList.add('border-transparent', 'text-gray-500');
+            document.getElementById('nav-task').classList.remove('border-indigo-500', 'text-gray-900');
+            document.getElementById('nav-task').classList.add('border-transparent', 'text-gray-500');
+
+            if (view === 'config') {
+                // Show config view
+                document.getElementById('view-config').classList.remove('hidden');
+                // Update active state for config
+                document.getElementById('nav-config').classList.remove('border-transparent', 'text-gray-500');
+                document.getElementById('nav-config').classList.add('border-indigo-500', 'text-gray-900');
+            } else if (view === 'task') {
+                // Show task view
+                document.getElementById('view-task').classList.remove('hidden');
+                // Update active state for task
+                document.getElementById('nav-task').classList.remove('border-transparent', 'text-gray-500');
+                document.getElementById('nav-task').classList.add('border-indigo-500', 'text-gray-900');
+            }
+        }
+    </script>
     <script>
         // 实际功能的JavaScript
         document.addEventListener('DOMContentLoaded', function() {
@@ -149,12 +204,27 @@
             const fileTree = document.querySelector('.file-tree');
             const startProcess = document.getElementById('startProcess');
             const logContainer = document.getElementById('logContainer');
-            const settings = document.getElementById('btnSettings');
             const profileList = document.getElementById('profileList');
             const currentProfileName = document.getElementById('currentProfileName');
 
             // 已选择的文件列表
             let selectedFiles = [];
+
+            // Profile dropdown functionality
+            const profileDropdown = document.getElementById('profileDropdown');
+            const profileDropdownContainer = document.getElementById('profileDropdownContainer');
+
+            profileDropdown.addEventListener('click', function() {
+                // Toggle the dropdown visibility
+                profileList.classList.toggle('hidden');
+            });
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function(event) {
+                if (!profileDropdownContainer.contains(event.target)) {
+                    profileList.classList.add('hidden');
+                }
+            });
 
             // 页面加载完成后获取当前工作目录和 profiles
             fetchWorkingDirectory();
@@ -174,19 +244,23 @@
                         profiles.forEach(profile => {
                             const listItem = document.createElement('li');
                             const link = document.createElement('a');
-                            link.className = 'dropdown-item';
+                            link.className = 'block px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-gray-900 cursor-pointer';
                             link.href = '#';
                             link.dataset.profileId = profile.id;
                             link.innerHTML = `
-                                ${profile.isActive ? '<i class="fas fa-check me-2"></i>' : '<i class="fas fa-book me-2"></i>'}
-                                ${profile.name}
-                                ${profile.isActive ? ' <span class="badge bg-primary">当前</span>' : ''}
+                                <div class="flex items-center">
+                                    ${profile.isActive ? '<i class="fas fa-check mr-2 text-indigo-600"></i>' : '<i class="fas fa-circle mr-2 text-gray-400 text-xs"></i>'}
+                                    <span class="flex-1">${profile.name}</span>
+                                    ${profile.isActive ? '<span class="ml-2 text-xs px-2 py-0.5 bg-indigo-100 text-indigo-800 rounded-full">当前</span>' : ''}
+                                </div>
                             `;
 
                             // Add click event to switch profile
                             link.addEventListener('click', function(e) {
                                 e.preventDefault();
                                 switchProfile(profile.id, profile.name);
+                                // Close the dropdown after selection
+                                profileList.classList.add('hidden');
                             });
 
                             listItem.appendChild(link);
@@ -225,14 +299,14 @@
                     const result = await response.json();
 
                     if (result.success) {
-                        appendToLog(`配置集已切换到: ${profileName}`);
+                        appendToLog('配置集已切换到: ' + profileName);
 
                         // Refresh the profile list to update active status
                         await loadProfiles();
 
                         // Optionally reload the page to ensure all components use the new profile
                         // For now we'll just show a notification that a refresh might be needed
-                        if (confirm(`配置集已切换到: ${profileName}\n\n是否需要刷新页面以确保所有设置都应用新配置？`)) {
+                        if (confirm('配置集已切换到: ' + profileName + '\n\n是否需要刷新页面以确保所有设置都应用新配置？')) {
                             window.location.reload();
                         }
                     } else {
@@ -285,7 +359,7 @@
                     if (data.working_directory) {
                         workDir.value = data.working_directory;
                         loadDirectoryContents(data.working_directory);
-                        appendToLog(`工作目录已设置为: ${data.working_directory}`);
+                        appendToLog('工作目录已设置为: ' + data.working_directory);
                     } else {
                         alert('设置工作目录失败: ' + data.error);
                         console.error('Failed to set working directory:', data.error);
@@ -299,7 +373,7 @@
 
             // 加载目录内容
             function loadDirectoryContents(path) {
-                fetch(`/api/files?path=${encodeURIComponent(path)}`)
+                fetch('/api/files?path=' + encodeURIComponent(path))
                     .then(response => response.json())
                     .then(data => {
                         if (Array.isArray(data)) {
@@ -323,20 +397,20 @@
                 // Add current directory name at the top
                 const rootItem = document.createElement('li');
                 rootItem.innerHTML = `
-                    <i class="fas fa-folder me-2 text-warning"></i>
-                    <span class="fw-bold">${currentPath.split('/').pop() || currentPath}</span>
+                    <i class="fa-solid fa-folder text-amber-500 mr-2"></i>
+                    <span class="font-medium">${currentPath.split('/').pop() || currentPath}</span>
                 `;
                 fileTree.appendChild(rootItem);
 
                 // Create a nested structure for the contents
                 const ul = document.createElement('ul');
-                ul.className = 'list-unstyled ms-4 mt-2';
+                ul.className = 'list-none ml-4 mt-1 space-y-1';
 
                 contents.forEach(item => {
                     const li = document.createElement('li');
                     if (item.is_directory) {
                         li.innerHTML = `
-                            <i class="fas fa-folder me-2 text-warning folder-icon"></i>
+                            <i class="fa-solid fa-folder text-amber-500 mr-2 folder-icon"></i>
                             <span class="folder-name">${item.name}</span>
                         `;
                         // Add click event for folder
@@ -355,7 +429,7 @@
 
                         if (supportedFileTypes.includes(fileExt)) {
                             li.innerHTML = `
-                                <i class="fas fa-file me-2 file-icon" style="color: #666;"></i>
+                                <i class="fa-solid fa-file text-gray-500 mr-2 file-icon"></i>
                                 <span class="file-name">${item.name}</span>
                             `;
 
@@ -373,13 +447,13 @@
                                     selectedFiles = selectedFiles.filter(path => path !== filePath);
                                     li.style.backgroundColor = '';
                                     li.style.fontWeight = '';
-                                    appendToLog(`文件 ${item.name} 已取消选择`);
+                                    appendToLog('文件 ' + item.name + ' 已取消选择');
                                 } else {
                                     // Add to selection
                                     selectedFiles.push(filePath);
-                                    li.style.backgroundColor = 'var(--primary-light)';
+                                    li.style.backgroundColor = 'rgba(99, 102, 241, 0.1)'; // indigo-100
                                     li.style.fontWeight = 'bold';
-                                    appendToLog(`文件 ${item.name} 已选择`);
+                                    appendToLog('文件 ' + item.name + ' 已选择');
                                 }
 
                                 // Update the selected files display
@@ -388,13 +462,13 @@
 
                             // If this file was previously selected, highlight it
                             if (selectedFiles.includes(item.path)) {
-                                li.style.backgroundColor = 'var(--primary-light)';
+                                li.style.backgroundColor = 'rgba(99, 102, 241, 0.1)'; // indigo-100
                                 li.style.fontWeight = 'bold';
                             }
                         } else {
                             // For unsupported file types, just show a different icon
                             li.innerHTML = `
-                                <i class="fas fa-file me-2" style="color: #bbb;"></i>
+                                <i class="fa-solid fa-file text-gray-300 mr-2"></i>
                                 <span>${item.name}</span>
                             `;
                         }
@@ -411,14 +485,14 @@
                 // For now, we'll just update the log, but in a complete implementation,
                 // you might want to show selected files in a separate area
                 const selectedCount = selectedFiles.length;
-                appendToLog(`当前已选择 ${selectedCount} 个文件`);
+                appendToLog('当前已选择 ' + selectedCount + ' 个文件');
             }
 
             // 添加日志条目
             function appendToLog(message) {
                 const logEntry = document.createElement('div');
-                logEntry.className = 'log-entry';
-                logEntry.textContent = `[${new Date().toLocaleString('sv-SE', {hour12: false})}] ${message}`;
+                logEntry.className = 'log-entry text-sm py-1';
+                logEntry.textContent = '[' + new Date().toLocaleString('sv-SE', {hour12: false}) + '] ' + message;
                 logContainer.appendChild(logEntry);
 
                 // 自动滚动到底部
@@ -431,15 +505,15 @@
                     return;
                 }
 
-                fetch(`/api/tasks/${taskId}/cancel`, {
+                fetch('/api/tasks/' + taskId + '/cancel', {
                     method: 'POST'
                 })
                 .then(response => response.json())
                 .then(data => {
                     if (data.id) {
-                        appendToLog(`任务 ${taskId.substring(0, 8)} 已取消`);
+                        appendToLog('任务 ' + taskId.substring(0, 8) + ' 已取消');
                     } else {
-                        appendToLog(`取消任务失败: ${data.error}`);
+                        appendToLog('取消任务失败: ' + data.error);
                         console.error('Failed to cancel task:', data.error);
                     }
                 })
@@ -449,9 +523,8 @@
                 });
             }
 
-            settings.addEventListener('click', function() {
-                document.location.href = "config/info_item_ui";
-            });
+            // By default, show the task view
+            switchView('task');
 
             // 开始处理任务
             startProcess.addEventListener('click', function() {
@@ -486,24 +559,24 @@
                     let taskId = null;
                     document.getElementById('currentTask').innerHTML = `
                         <div class="task-item">
-                            <div class="d-flex justify-content-between">
+                            <div class="flex justify-between items-center">
                                 <div>
-                                    <div class="task-status status-running">
-                                        <i class="fas fa-sync fa-spin me-1"></i>任务 - 处理中
+                                    <div class="task-status status-running flex items-center">
+                                        <i class="fa-solid fa-sync fa-spin mr-2"></i>任务 - 处理中
                                     </div>
-                                    <div class="small" style="color: var(--secondary-color);">开始时间: ${new Date().toLocaleString()}</div>
+                                    <div class="text-xs text-gray-500">开始时间: ${new Date().toLocaleString()}</div>
                                 </div>
                                 <div>
-                                <button class="btn btn-sm btn-outline-danger" id="cancelTaskBtn" data-task-id="">
-                                    <i class="fas fa-stop"></i> 取消
-                                </button>
-                            </div>
-                            </div>
-                            <div class="mt-2">
-                                <div class="progress" style="height: 8px;">
-                                    <div class="progress-bar progress-bar-striped progress-bar-animated"
-                                         role="progressbar" style="width: 0%; background-color: var(--primary-color);" id="taskProgress">0%</div>
+                                    <button class="text-sm px-3 py-1 border border-red-300 text-red-700 bg-red-50 hover:bg-red-100 rounded-md" id="cancelTaskBtn" data-task-id="">
+                                        <i class="fa-solid fa-stop mr-1"></i> 取消
+                                    </button>
                                 </div>
+                            </div>
+                            <div class="mt-3">
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div class="bg-indigo-600 h-2 rounded-full transition-all duration-300 ease-out" style="width: 0%;" id="taskProgress"></div>
+                                </div>
+                                <div class="text-right text-xs text-gray-500 mt-1" id="progressText">0%</div>
                             </div>
                         </div>
                     `;
@@ -539,19 +612,19 @@
                                             case 'task_info':
                                                 taskId = messageData.id;
                                                 document.querySelector('#currentTask .task-status').innerHTML =
-                                                    `<i class="fas fa-sync fa-spin me-1"></i>任务 ${taskId.substring(0, 8)} - 处理中`;
-                                                
+                                                    '<i class="fa-solid fa-sync fa-spin mr-2"></i>任务 ' + taskId.substring(0, 8) + ' - 处理中';
+
                                                 // 设置取消按钮的任务ID
                                                 const cancelBtn = document.getElementById('cancelTaskBtn');
                                                 if (cancelBtn) {
                                                     cancelBtn.setAttribute('data-task-id', taskId);
-                                                    console.log(`设置取消按钮任务ID为: ${taskId}`);
+                                                    console.log('设置取消按钮任务ID为: ' + taskId);
                                                     cancelBtn.addEventListener('click', () => {
                                                         cancelTask(taskId);
                                                     });
                                                 }
 
-                                                appendToLog(`开始处理任务，任务ID: ${taskId.substring(0, 8)}...`);
+                                                appendToLog('开始处理任务，任务ID: ' + taskId.substring(0, 8) + '...');
                                                 break;
 
                                             case 'status_update':
@@ -560,8 +633,8 @@
                                                     const statusElement = document.querySelector('#currentTask .task-status');
                                                     if (statusElement) {
                                                         const statusText = getStatusText(messageData.status);
-                                                        statusElement.innerHTML = `<i class="${getStatusIcon(messageData.status)} me-1"></i>任务 ${taskId.substring(0, 8)} - ${statusText}`;
-                                                        statusElement.className = `task-status ${getStatusClass(messageData.status)}`;
+                                                        statusElement.innerHTML = '<i class="' + getStatusIcon(messageData.status) + ' mr-2"></i>任务 ' + taskId.substring(0, 8) + ' - ' + statusText;
+                                                        statusElement.className = 'task-status ' + getStatusClass(messageData.status);
                                                     }
                                                 }
                                                 break;
@@ -570,21 +643,25 @@
                                                 // Update progress bar
                                                 const progress = messageData.progress || 0;
                                                 const progressBar = document.getElementById('taskProgress');
+                                                const progressText = document.getElementById('progressText');
                                                 if (progressBar) {
-                                                    progressBar.style.width = `${progress}%`;
-                                                    progressBar.textContent = `${progress}%`;
+                                                    progressBar.style.width = progress + '%';
                                                 }
-                                                // appendToLog(`任务进度: ${progress}%`);
+                                                if (progressText) {
+                                                    progressText.textContent = progress + '%';
+                                                }
+                                                
+                                                // appendToLog('任务进度: ' + progress + '%');
                                                 break;
-                                            
+
                                             case 'cancellation':
                                                 // Update UI for cancellation
                                                 if (taskId) {
                                                     const statusElement = document.querySelector('#currentTask .task-status');
                                                     if (statusElement) {
                                                         const statusText = getStatusText(messageData.status);
-                                                        statusElement.innerHTML = `<i class="${getStatusIcon(messageData.status)} me-1"></i>任务 ${taskId.substring(0, 8)} - ${statusText}`;
-                                                        statusElement.className = `task-status ${getStatusClass(messageData.status)}`;
+                                                        statusElement.innerHTML = '<i class="' + getStatusIcon(messageData.status) + ' mr-2"></i>任务 ' + taskId.substring(0, 8) + ' - ' + statusText;
+                                                        statusElement.className = 'task-status ' + getStatusClass(messageData.status);
                                                     }
 
                                                     // Add to task history
@@ -593,7 +670,7 @@
                                                     taskHistory.insertBefore(completedTask, taskHistory.firstChild);
 
                                                     // Clear current task display
-                                                    document.getElementById('currentTask').innerHTML = '<div class="alert alert-light border" style="color: var(--secondary-color);">暂无进行中的任务</div>';
+                                                    document.getElementById('currentTask').innerHTML = '<div class="border rounded-lg p-4 text-center"><i class="fa-solid fa-inbox text-gray-400 text-2xl mb-2"></i><p class="text-gray-500">暂无进行中的任务</p></div>';
 
                                                     // Clear selected files after successful processing
                                                     if (messageData.status === 'cancelled') {
@@ -606,6 +683,7 @@
                                                     }
 
                                                     document.getElementById('taskProgress').parentElement.remove();
+                                                    document.getElementById('progressText').parentElement.remove();
                                                     document.getElementById('cancelTaskBtn').parentElement.remove();
 
                                                     // Enable the start process button
@@ -619,8 +697,8 @@
                                                     const statusElement = document.querySelector('#currentTask .task-status');
                                                     if (statusElement) {
                                                         const statusText = getStatusText(messageData.status);
-                                                        statusElement.innerHTML = `<i class="${getStatusIcon(messageData.status)} me-1"></i>任务 ${taskId.substring(0, 8)} - ${statusText}`;
-                                                        statusElement.className = `task-status ${getStatusClass(messageData.status)}`;
+                                                        statusElement.innerHTML = '<i class="' + getStatusIcon(messageData.status) + ' mr-2"></i>任务 ' + taskId.substring(0, 8) + ' - ' + statusText;
+                                                        statusElement.className = 'task-status ' + getStatusClass(messageData.status);
                                                     }
 
                                                     // Add to task history
@@ -629,10 +707,10 @@
                                                     taskHistory.insertBefore(completedTask, taskHistory.firstChild);
 
                                                     // Clear current task display
-                                                    document.getElementById('currentTask').innerHTML = '<div class="alert alert-light border" style="color: var(--secondary-color);">暂无进行中的任务</div>';
+                                                    document.getElementById('currentTask').innerHTML = '<div class="border rounded-lg p-4 text-center"><i class="fa-solid fa-inbox text-gray-400 text-2xl mb-2"></i><p class="text-gray-500">暂无进行中的任务</p></div>';
 
                                                     // Log completion
-                                                    appendToLog(`任务 ${taskId.substring(0, 8)} 处理完成，状态: ${getStatusText(messageData.status)}`);
+                                                    appendToLog('任务 ' + taskId.substring(0, 8) + ' 处理完成，状态: ' + getStatusText(messageData.status));
 
                                                     // Clear selected files after successful processing
                                                     if (messageData.status === 'completed') {
@@ -645,6 +723,7 @@
                                                     }
 
                                                     document.getElementById('taskProgress').parentElement.remove();
+                                                    document.getElementById('progressText').parentElement.remove();
                                                     document.getElementById('cancelTaskBtn').parentElement.remove();
 
                                                     // Enable the start process button
@@ -658,8 +737,8 @@
                                                     const statusElement = document.querySelector('#currentTask .task-status');
                                                     if (statusElement) {
                                                         const statusText = getStatusText(messageData.status);
-                                                        statusElement.innerHTML = `<i class="${getStatusIcon(messageData.status)} me-1"></i>任务 ${taskId.substring(0, 8)} - ${statusText}`;
-                                                        statusElement.className = `task-status ${getStatusClass(messageData.status)}`;
+                                                        statusElement.innerHTML = '<i class="' + getStatusIcon(messageData.status) + ' mr-2"></i>任务 ' + taskId.substring(0, 8) + ' - ' + statusText;
+                                                        statusElement.className = 'task-status ' + getStatusClass(messageData.status);
                                                     }
 
                                                     // Add to task history
@@ -668,10 +747,10 @@
                                                     taskHistory.insertBefore(completedTask, taskHistory.firstChild);
 
                                                     // Clear current task display
-                                                    document.getElementById('currentTask').innerHTML = '<div class="alert alert-light border" style="color: var(--secondary-color);">暂无进行中的任务</div>';
+                                                    document.getElementById('currentTask').innerHTML = '<div class="border rounded-lg p-4 text-center"><i class="fa-solid fa-inbox text-gray-400 text-2xl mb-2"></i><p class="text-gray-500">暂无进行中的任务</p></div>';
 
                                                     // Log error
-                                                    appendToLog(`任务 ${taskId.substring(0, 8)} 处理失败: ${messageData.error}`);
+                                                    appendToLog('任务 ' + taskId.substring(0, 8) + ' 处理失败: ' + messageData.error);
 
                                                     // Enable the start process button
                                                     document.getElementById('startProcess').disabled = false;
@@ -729,15 +808,15 @@
             function getStatusIcon(status) {
                 switch(status) {
                     case 'completed':
-                        return 'fas fa-check-circle';
+                        return 'fa-solid fa-check-circle';
                     case 'failed':
-                        return 'fas fa-exclamation-circle';
+                        return 'fa-solid fa-exclamation-circle';
                     case 'cancelled':
-                        return 'fas fa-times-circle';
+                        return 'fa-solid fa-times-circle';
                     case 'processing':
-                        return 'fas fa-sync fa-spin';
+                        return 'fa-solid fa-sync fa-spin';
                     default:
-                        return 'fas fa-clock';
+                        return 'fa-solid fa-clock';
                 }
             }
 
@@ -745,15 +824,15 @@
             function getStatusClass(status) {
                 switch(status) {
                     case 'processing':
-                        return 'task-status status-running';
+                        return 'task-status status-running flex items-center';
                     case 'completed':
-                        return 'task-status status-completed';
+                        return 'task-status status-completed flex items-center';
                     case 'failed':
-                        return 'task-status status-failed';
+                        return 'task-status status-failed flex items-center';
                     case 'cancelled':
-                        return 'task-status status-failed';
+                        return 'task-status status-failed flex items-center';
                     default:
-                        return 'task-status status-pending';
+                        return 'task-status status-pending flex items-center';
                 }
             }
         });

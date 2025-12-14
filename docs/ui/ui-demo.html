@@ -1,0 +1,359 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta name="x-poe-datastore-behavior" content="local_only"><meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://code.jquery.com https://unpkg.com https://d3js.org https://threejs.org https://cdn.plot.ly https://stackpath.bootstrapcdn.com https://maps.googleapis.com https://cdn.tailwindcss.com https://ajax.googleapis.com https://kit.fontawesome.com https://cdn.datatables.net https://maxcdn.bootstrapcdn.com https://code.highcharts.com https://tako-static-assets-production.s3.amazonaws.com https://www.youtube.com https://fonts.googleapis.com https://fonts.gstatic.com https://pfst.cf2.poecdn.net https://puc.poecdn.net https://i.imgur.com https://wikimedia.org https://*.icons8.com https://*.giphy.com https://picsum.photos https://images.unsplash.com; frame-src 'self' https://www.youtube.com https://trytako.com; child-src 'self'; manifest-src 'self'; worker-src 'self'; upgrade-insecure-requests; block-all-mixed-content;">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能数据标准化工具 - 原型</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .highlight-sample {
+            background-color: #fef3c7;
+            padding: 2px 4px;
+            border-radius: 4px;
+            cursor: pointer;
+            border-bottom: 2px solid #f59e0b;
+        }
+        .highlight-sample:hover {
+            background-color: #fde68a;
+        }
+        /* 模拟标签输入 */
+        .tag-input-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            background-color: white;
+        }
+        .tag {
+            background-color: #e5e7eb;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        .tag i { cursor: pointer; }
+        .tag-input {
+            border: none;
+            outline: none;
+            flex-grow: 1;
+            min-width: 100px;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans h-screen flex flex-col">
+
+    <!-- 顶部导航 -->
+    <header class="bg-white shadow-sm border-b border-gray-200 z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex">
+                    <div class="flex-shrink-0 flex items-center text-indigo-600 font-bold text-xl">
+                        <i class="fa-solid fa-wand-magic-sparkles mr-2"></i> DataStandardizer
+                    </div>
+                    <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+                        <a href="#" onclick="switchTab('config')" id="nav-config" class="border-indigo-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                            模版配置
+                        </a>
+                        <a href="#" onclick="switchTab('task')" id="nav-task" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                            任务执行
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="flex-1 overflow-hidden relative">
+        
+        <!-- 视图 1: 模版配置 (Configuration View) -->
+        <div id="view-config" class="h-full overflow-y-auto p-6 max-w-7xl mx-auto w-full">
+            <div class="bg-white shadow rounded-lg p-6 mb-6">
+                <h2 class="text-lg font-medium text-gray-900 mb-4">1. 定义标准输出字段 (Schema)</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">字段名称</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">字段Key</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">类型</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">描述 (Prompt Hint)</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200" id="schema-table-body">
+                            <!-- 动态生成行 -->
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap"><input type="text" value="客户姓名" class="border-gray-300 rounded-md shadow-sm text-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full border p-1"></td>
+                                <td class="px-6 py-4 whitespace-nowrap"><input type="text" value="customer_name" class="border-gray-300 rounded-md shadow-sm text-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full border p-1 bg-gray-50" readonly=""></td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <select class="border-gray-300 rounded-md shadow-sm text-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full border p-1">
+                                        <option>文本</option>
+                                        <option>数字</option>
+                                        <option>日期</option>
+                                    </select>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap"><input type="text" value="客户的全名，不含称谓" class="border-gray-300 rounded-md shadow-sm text-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full border p-1"></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                    <button class="text-red-600 hover:text-red-900"><i class="fa-solid fa-trash"></i></button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap"><input type="text" value="订单金额" class="border-gray-300 rounded-md shadow-sm text-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full border p-1"></td>
+                                <td class="px-6 py-4 whitespace-nowrap"><input type="text" value="order_amount" class="border-gray-300 rounded-md shadow-sm text-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full border p-1 bg-gray-50" readonly=""></td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <select class="border-gray-300 rounded-md shadow-sm text-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full border p-1">
+                                        <option>文本</option>
+                                        <option selected="">数字</option>
+                                        <option>日期</option>
+                                    </select>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap"><input type="text" value="最终成交价，纯数字" class="border-gray-300 rounded-md shadow-sm text-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full border p-1"></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                    <button class="text-red-600 hover:text-red-900"><i class="fa-solid fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <button class="mt-3 inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200">
+                        <i class="fa-solid fa-plus mr-2"></i> 添加字段
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Excel 配置 -->
+                <div class="bg-white shadow rounded-lg p-6">
+                    <h2 class="text-lg font-medium text-gray-900 mb-4"><i class="fa-solid fa-table text-green-600 mr-2"></i>Excel 映射增强</h2>
+                    <p class="text-sm text-gray-500 mb-4">配置可能的表头同义词，帮助模型识别列。</p>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">客户姓名 (customer_name)</label>
+                            <div class="tag-input-container mt-1">
+                                <span class="tag">姓名 <i class="fa-solid fa-xmark text-xs ml-1"></i></span>
+                                <span class="tag">Name <i class="fa-solid fa-xmark text-xs ml-1"></i></span>
+                                <span class="tag">联系人 <i class="fa-solid fa-xmark text-xs ml-1"></i></span>
+                                <input type="text" class="tag-input" placeholder="输入同义词回车...">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">订单金额 (order_amount)</label>
+                            <div class="tag-input-container mt-1">
+                                <span class="tag">总价 <i class="fa-solid fa-xmark text-xs ml-1"></i></span>
+                                <span class="tag">金额 <i class="fa-solid fa-xmark text-xs ml-1"></i></span>
+                                <span class="tag">Price <i class="fa-solid fa-xmark text-xs ml-1"></i></span>
+                                <input type="text" class="tag-input" placeholder="输入同义词回车...">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 文本标注配置 -->
+                <div class="bg-white shadow rounded-lg p-6">
+                    <h2 class="text-lg font-medium text-gray-900 mb-4"><i class="fa-solid fa-file-lines text-blue-600 mr-2"></i>文本提取样本 (Few-Shot)</h2>
+                    <p class="text-sm text-gray-500 mb-4">标注样本段落，教模型如何从文本中提取。</p>
+                    
+                    <div class="border rounded-md p-4 bg-gray-50 text-sm leading-relaxed mb-4 relative group">
+                        <!-- 模拟标注效果 -->
+                        <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button class="bg-indigo-600 text-white text-xs px-2 py-1 rounded">添加新样本</button>
+                        </div>
+                        <p>
+                            收到来自 <span class="highlight-sample" title="映射到: 客户姓名">李四</span> 的询价邮件，他想要采购一批服务器，
+                            预计总预算在 <span class="highlight-sample" title="映射到: 订单金额">50000元</span> 左右。
+                            请尽快跟进。
+                        </p>
+                    </div>
+
+                    <div class="bg-blue-50 border-l-4 border-blue-400 p-4">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="fa-solid fa-circle-info text-blue-400"></i>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-blue-700">
+                                    交互提示：选中上方文本中的文字，将弹出菜单选择对应的标准字段。
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 视图 2: 任务执行 (Task Execution View) -->
+        <div id="view-task" class="h-full overflow-y-auto p-6 max-w-7xl mx-auto w-full hidden">
+            
+            <!-- 步骤 1: 输入 -->
+            <div class="bg-white shadow rounded-lg p-6 mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-medium text-gray-900">数据转换任务</h2>
+                    <select class="block w-48 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md border">
+                        <option>销售线索提取模版</option>
+                        <option>发票信息提取模版</option>
+                    </select>
+                </div>
+
+                <div class="border-b border-gray-200 mb-4">
+                    <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                        <a href="#" onclick="switchInputType('excel')" id="tab-excel" class="border-indigo-500 text-indigo-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                            <i class="fa-solid fa-table mr-2"></i>Excel 上传
+                        </a>
+                        <a href="#" onclick="switchInputType('text')" id="tab-text" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                            <i class="fa-solid fa-align-left mr-2"></i>文本输入
+                        </a>
+                    </nav>
+                </div>
+
+                <!-- Excel 输入区 -->
+                <div id="input-excel-area" class="block">
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center hover:border-indigo-500 transition-colors cursor-pointer bg-gray-50">
+                        <i class="fa-solid fa-cloud-arrow-up text-4xl text-gray-400 mb-3"></i>
+                        <p class="text-sm text-gray-600">点击上传或拖拽 Excel 文件至此</p>
+                        <p class="text-xs text-gray-400 mt-1">支持 .xlsx, .csv</p>
+                    </div>
+                    
+                    <!-- 模拟映射确认 -->
+                    <div class="mt-6 border rounded-lg overflow-hidden">
+                        <div class="bg-gray-50 px-4 py-2 border-b flex justify-between items-center">
+                            <span class="font-medium text-sm text-gray-700">字段映射确认 (AI 自动匹配)</span>
+                            <span class="text-xs text-green-600"><i class="fa-solid fa-check-circle mr-1"></i>已匹配 2/2 列</span>
+                        </div>
+                        <div class="p-4 grid grid-cols-2 gap-4">
+                            <div class="flex items-center justify-between border p-2 rounded bg-white">
+                                <span class="text-sm text-gray-500">Excel表头: <strong>联系人姓名</strong></span>
+                                <i class="fa-solid fa-arrow-right text-gray-400"></i>
+                                <select class="text-sm border-gray-300 rounded border p-1 w-40">
+                                    <option>客户姓名</option>
+                                    <option>订单金额</option>
+                                    <option>忽略此列</option>
+                                </select>
+                            </div>
+                            <div class="flex items-center justify-between border p-2 rounded bg-white">
+                                <span class="text-sm text-gray-500">Excel表头: <strong>成交价</strong></span>
+                                <i class="fa-solid fa-arrow-right text-gray-400"></i>
+                                <select class="text-sm border-gray-300 rounded border p-1 w-40">
+                                    <option>客户姓名</option>
+                                    <option selected="">订单金额</option>
+                                    <option>忽略此列</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 文本输入区 -->
+                <div id="input-text-area" class="hidden">
+                    <textarea rows="6" class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md border p-3" placeholder="在此粘贴非标文本，例如邮件内容..."></textarea>
+                </div>
+
+                <div class="mt-4 flex justify-end">
+                    <button class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        开始转换 <i class="fa-solid fa-arrow-right ml-2"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 步骤 2: 结果预览 -->
+            <div class="bg-white shadow rounded-lg p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-medium text-gray-900">输出结果预览</h2>
+                    <div>
+                        <button class="mr-2 inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50">
+                            <i class="fa-solid fa-download mr-1"></i> 导出 Excel
+                        </button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto border rounded-lg">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">客户姓名</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">订单金额</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">张三</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">50,000</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600"><i class="fa-solid fa-check"></i> 成功</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">李四</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 bg-yellow-50 border border-yellow-200 rounded" title="AI置信度较低，请核对">
+                                    <input type="text" value="4500" class="bg-transparent w-full outline-none">
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-yellow-600"><i class="fa-solid fa-triangle-exclamation"></i> 需复核</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // 简单的 Tab 切换逻辑
+        function switchTab(tabName) {
+            const configView = document.getElementById('view-config');
+            const taskView = document.getElementById('view-task');
+            const navConfig = document.getElementById('nav-config');
+            const navTask = document.getElementById('nav-task');
+
+            if (tabName === 'config') {
+                configView.classList.remove('hidden');
+                taskView.classList.add('hidden');
+                
+                navConfig.classList.add('border-indigo-500', 'text-gray-900');
+                navConfig.classList.remove('border-transparent', 'text-gray-500');
+                
+                navTask.classList.remove('border-indigo-500', 'text-gray-900');
+                navTask.classList.add('border-transparent', 'text-gray-500');
+            } else {
+                configView.classList.add('hidden');
+                taskView.classList.remove('hidden');
+
+                navTask.classList.add('border-indigo-500', 'text-gray-900');
+                navTask.classList.remove('border-transparent', 'text-gray-500');
+
+                navConfig.classList.remove('border-indigo-500', 'text-gray-900');
+                navConfig.classList.add('border-transparent', 'text-gray-500');
+            }
+        }
+
+        function switchInputType(type) {
+            const excelArea = document.getElementById('input-excel-area');
+            const textArea = document.getElementById('input-text-area');
+            const tabExcel = document.getElementById('tab-excel');
+            const tabText = document.getElementById('tab-text');
+
+            if (type === 'excel') {
+                excelArea.classList.remove('hidden');
+                textArea.classList.add('hidden');
+                
+                tabExcel.classList.add('border-indigo-500', 'text-indigo-600');
+                tabExcel.classList.remove('border-transparent', 'text-gray-500');
+                
+                tabText.classList.remove('border-indigo-500', 'text-indigo-600');
+                tabText.classList.add('border-transparent', 'text-gray-500');
+            } else {
+                excelArea.classList.add('hidden');
+                textArea.classList.remove('hidden');
+
+                tabText.classList.add('border-indigo-500', 'text-indigo-600');
+                tabText.classList.remove('border-transparent', 'text-gray-500');
+
+                tabExcel.classList.remove('border-indigo-500', 'text-indigo-600');
+                tabExcel.classList.add('border-transparent', 'text-gray-500');
+            }
+        }
+    </script>
+
+
+</body></html>
