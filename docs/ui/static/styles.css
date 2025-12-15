@@ -1,0 +1,195 @@
+/*
+ * Additional custom styles to complement Tailwind CSS
+ * These styles enhance the UI with custom animations and overrides
+ */
+
+/* Custom scrollbar for better UX */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c5c5c5;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Custom animations for interactive elements */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideInUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slide-in {
+    animation: slideInUp 0.3s ease-out;
+}
+
+/* Custom focus styles for accessibility */
+.focus-outline:focus {
+    outline: 2px solid #4F46E5;
+    outline-offset: 2px;
+}
+
+/* Custom progress bar animation */
+.progress-animated {
+    transition: width 0.3s ease;
+}
+
+/* File tree specific styles */
+.file-tree ul {
+    margin-left: 1.25rem; /* 20px */
+}
+
+.file-tree li {
+    padding: 0.125rem 0; /* 2px 0 */
+}
+
+.file-tree .folder-name,
+.file-tree .file-name {
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    transition: background-color 0.2s;
+}
+
+.file-tree .folder-name:hover,
+.file-tree .file-name:hover {
+    background-color: #EEF2FF;
+}
+
+/* Task status specific styles */
+.status-running {
+    color: #F59E0B;
+}
+
+.status-completed {
+    color: #10B981;
+}
+
+.status-failed {
+    color: #EF4444;
+}
+
+.status-pending {
+    color: #6B7280;
+}
+
+/* Log entry styles */
+.log-entry {
+    border-bottom: 1px solid #E5E7EB;
+    padding: 0.25rem 0;
+}
+
+.log-entry:last-child {
+    border-bottom: none;
+}
+
+/* Responsive adjustments for mobile */
+@media (max-width: 768px) {
+    .log-container {
+        max-height: 200px;
+    }
+
+    .file-tree {
+        font-size: 0.9rem;
+    }
+
+    .file-tree ul {
+        margin-left: 1rem;
+    }
+}
+
+/* Toast notification container */
+.swal2-container {
+    z-index: 9999 !important;
+}
+
+/* Additional utility classes that might be used in JS */
+.d-none {
+    display: none !important;
+}
+
+.d-block {
+    display: block !important;
+}
+
+.text-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Custom badge styles */
+.badge {
+    display: inline-block;
+    padding: 0.25em 0.5em;
+    font-size: 0.75em;
+    font-weight: 500;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: 0.25rem;
+}
+
+/* Sortable handle styles */
+.sort-handle {
+    cursor: move;
+    transition: all 0.2s;
+}
+
+.sort-handle:hover {
+    color: #4F46E5 !important;
+}
+
+/* Highlighted row in tables */
+.bg-indigo-50 {
+    background-color: #EEF2FF;
+}
+
+/* Task item container */
+.task-item {
+    border: 1px solid #E5E7EB;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    background-color: white;
+    transition: box-shadow 0.2s;
+}
+
+.task-item:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* File tree folder icons */
+.folder-icon {
+    color: #F59E0B !important;
+}
+
+.file-icon {
+    color: #6B7280 !important;
+}

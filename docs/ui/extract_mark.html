@@ -3,314 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>划词分类标记 Demo（Markdown 预览版）</title>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cdn.bootcdn.net/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css">
-    <style>
-        /* 样式部分与之前一致，保留不变 */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        body {
-            background-color: #f5f7fa;
-            padding: 20px;
-        }
-
-        .demo-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
-        }
-
-        .header {
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid #eee;
-        }
-
-        .header h2 {
-            color: #333;
-            font-size: 22px;
-            margin-bottom: 8px;
-        }
-
-        .header .tip {
-            color: #666;
-            font-size: 14px;
-            line-height: 1.5;
-        }
-
-        .category-options {
-            margin-bottom: 15px;
-            padding: 12px;
-            background: #f9f9f9;
-            border-radius: 8px;
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .category-btn {
-            padding: 6px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.2s;
-            color: white;
-        }
-
-        .btn-noun {
-            background-color: #0288d1;
-        }
-
-        .btn-noun:hover {
-            background-color: #0277bd;
-        }
-
-        .btn-verb {
-            background-color: #2e7d32;
-        }
-
-        .btn-verb:hover {
-            background-color: #256929;
-        }
-
-        .btn-adjective {
-            background-color: #f57c00;
-        }
-
-        .btn-adjective:hover {
-            background-color: #e67100;
-        }
-
-        .btn-other {
-            background-color: #8e24aa;
-        }
-
-        .btn-other:hover {
-            background-color: #7b1fa2;
-        }
-
-        .category-options .disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .markdown-container {
-            display: flex;
-            gap: 20px;
-            margin-bottom: 25px;
-        }
-
-        .editor-wrap, .preview-wrap {
-            flex: 1;
-            min-height: 400px;
-        }
-
-        .editor-wrap h3, .preview-wrap h3 {
-            font-size: 16px;
-            color: #333;
-            margin-bottom: 10px;
-        }
-
-        #text-area {
-            width: 100%;
-            min-height: 400px;
-            padding: 20px;
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 16px;
-            line-height: 1.8;
-            outline: none;
-            user-select: text;
-            background: #fff;
-            transition: border-color 0.3s;
-            font-family: 'Consolas', 'Monaco', monospace;
-        }
-
-        #text-area:focus {
-            border-color: #409eff;
-        }
-
-        #markdown-source {
-            display: none;
-        }
-
-        #preview-area {
-            width: 100%;
-            min-height: 400px;
-            padding: 20px;
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 16px;
-            line-height: 1.8;
-            background: #fff;
-            overflow-y: auto;
-        }
-
-        /* 表格样式优化（预览区） */
-        #preview-area table {
-            border-collapse: collapse;
-            width: 100%;
-            margin: 10px 0;
-        }
-
-        #preview-area th, #preview-area td {
-            border: 1px solid #ddd;
-            padding: 8px 12px;
-            text-align: left;
-        }
-
-        #preview-area th {
-            background-color: #f5f5f5;
-        }
-
-        .noun {
-            background-color: #e1f5fe;
-            color: #0288d1 !important;
-            padding: 2px 4px;
-            border-radius: 3px;
-            margin: 0 1px;
-        }
-
-        .verb {
-            background-color: #e8f5e9;
-            color: #2e7d32 !important;
-            padding: 2px 4px;
-            border-radius: 3px;
-            margin: 0 1px;
-        }
-
-        .adjective {
-            background-color: #fff3e0;
-            color: #f57c00 !important;
-            padding: 2px 4px;
-            border-radius: 3px;
-            margin: 0 1px;
-        }
-
-        .other {
-            background-color: #f3e5f5;
-            color: #8e24aa !important;
-            padding: 2px 4px;
-            border-radius: 3px;
-            margin: 0 1px;
-        }
-
-        .data-section {
-            margin-top: 30px;
-        }
-
-        .data-section h3 {
-            font-size: 16px;
-            color: #333;
-            margin-bottom: 10px;
-        }
-
-        #category-data {
-            padding: 15px;
-            background: #f9f9f9;
-            border-radius: 6px;
-            font-size: 14px;
-            color: #666;
-            white-space: pre-wrap;
-            min-height: 80px;
-        }
-
-        .btn-group {
-            margin-top: 15px;
-        }
-
-        .btn {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            margin-right: 10px;
-            transition: background-color 0.2s;
-        }
-
-        .btn-reset {
-            background-color: #ff6b6b;
-            color: white;
-        }
-
-        .btn-reset:hover {
-            background-color: #ff5252;
-        }
-
-        .btn-export {
-            background-color: #409eff;
-            color: white;
-        }
-
-        .btn-export:hover {
-            background-color: #3399ff;
-        }
-
-        @media (max-width: 768px) {
-            .markdown-container {
-                flex-direction: column;
-            }
-
-            .editor-wrap, .preview-wrap {
-                min-height: 300px;
-            }
-
-            #text-area, #preview-area {
-                min-height: 300px;
-            }
-        }
-    </style>
+    <title>划词信息项标记</title>
+    <!-- 引入Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入Font Awesome图标 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- 引入统一样式文件 -->
+    <link href="static/styles.css" rel="stylesheet">
 </head>
-<body>
-    <div class="demo-container">
-        <div class="header">
-            <h2>文本划词分类标记工具（Markdown 预览版）</h2>
-            <div class="tip">
-                1. 在左侧编辑区域以Markdown格式粘贴/输入文本（支持表格）<br>
-                2. 选中任意词汇，点击上方分类按钮完成标定<br>
-                3. 右侧实时预览Markdown渲染效果（包含分类标记和表格）<br>
-                4. 分类数据会实时显示在下方区域，支持重置和导出
+<body class="bg-gray-50 text-gray-800 font-sans">
+    <div class="container mx-auto p-6 max-w-7xl">
+        <div class="bg-white shadow rounded-lg p-6 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-medium text-gray-900">文本划词信息项标记</h2>
+            </div>
+
+            <div class="mb-4 text-sm text-gray-600 space-y-2">
+                <p>1. 在编辑区域粘贴/输入文本</p>
+                <p>2. 选中任意文字，点击上方信息项按钮完成标定</p>
+                <p>3. 信息项数据会实时显示在下方区域，支持重置和导出</p>
             </div>
         </div>
 
-        <div class="category-options" id="category-options">
-            <button class="category-btn btn-noun" data-type="noun" disabled>名词</button>
-            <button class="category-btn btn-verb" data-type="verb" disabled>动词</button>
-            <button class="category-btn btn-adjective" data-type="adjective" disabled>形容词</button>
-            <button class="category-btn btn-other" data-type="other" disabled>其他</button>
-        </div>
-
-        <div class="markdown-container">
-            <div class="editor-wrap">
-                <h3>Markdown 编辑区</h3>
-                <div id="text-area" contenteditable="true"></div>
-                <textarea id="markdown-source"></textarea>
+        <div class="bg-white shadow rounded-lg p-6 mb-6">
+            <div class="flex flex-wrap gap-2 mb-4">
+                <button class="info-item-btn bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed" data-type="customer_name" id="btn-customer_name" disabled>客户名称</button>
+                <button class="info-item-btn bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed" data-type="contact_info" id="btn-contact_info" disabled>联系方式</button>
+                <button class="info-item-btn bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed" data-type="contract_id" id="btn-contract_id" disabled>合同编号</button>
+                <button class="info-item-btn bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed" data-type="contract_amount" id="btn-contract_amount" disabled>合同金额</button>
+                <button class="info-item-btn bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed" data-type="other" id="btn-other" disabled>其他信息</button>
             </div>
-            <div class="preview-wrap">
-                <h3>Markdown 预览区</h3>
-                <div id="preview-area"></div>
+
+            <div>
+                <h3 class="text-sm font-medium text-gray-700 mb-2">文本编辑区</h3>
+                <div id="text-area" contenteditable="true" class="w-full min-h-[400px] p-4 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-base leading-loose bg-white whitespace-pre-wrap"></div>
             </div>
-        </div>
 
-        <div class="data-section">
-            <h3>分类数据记录：</h3>
-            <div id="category-data">暂无分类数据</div>
+            <div class="mt-6">
+                <h3 class="text-sm font-medium text-gray-700 mb-2">信息项数据记录：</h3>
+                <div id="info-item-data" class="w-full p-4 bg-gray-50 rounded-md text-sm text-gray-600 whitespace-pre-wrap min-h-[80px] border border-gray-200"></div>
 
-            <div class="btn-group">
-                <button class="btn btn-reset" id="reset-btn">重置所有内容</button>
-                <button class="btn btn-export" id="export-btn">导出分类数据</button>
+                <div class="flex space-x-3 mt-4">
+                    <button class="inline-flex items-center px-4 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none" id="reset-btn">
+                        <i class="fa-solid fa-sync-alt mr-2"></i> 重置所有内容
+                    </button>
+                    <button class="inline-flex items-center px-4 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none" id="export-btn">
+                        <i class="fa-solid fa-download mr-2"></i> 导出信息项数据
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -318,57 +58,47 @@
     <script>
         // ========== 元素获取 ==========
         const textArea = document.getElementById('text-area');
-        const markdownSource = document.getElementById('markdown-source');
-        const previewArea = document.getElementById('preview-area');
-        const categoryBtns = document.querySelectorAll('.category-btn');
-        const categoryData = document.getElementById('category-data');
+        const infoItemBtns = document.querySelectorAll('.info-item-btn');
+        const infoItemData = document.getElementById('info-item-data');
         const resetBtn = document.getElementById('reset-btn');
         const exportBtn = document.getElementById('export-btn');
+        const btnCustomerName = document.getElementById('btn-customer_name');
+        const btnContactInfo = document.getElementById('btn-contact_info');
+        const btnContractId = document.getElementById('btn-contract_id');
+        const btnContractAmount = document.getElementById('btn-contract_amount');
+        const btnOther = document.getElementById('btn-other');
 
         // ========== 全局变量 ==========
         let selectedRange = null;
         let selectedText = '';
-        let categoryRecord = [];
-        // 存储分类标记的映射：{ 占位符: { text: 词汇, type: 分类 } }
+        let infoItemRecord = [];
+        // 存储信息项标记的映射：{ 占位符: { text: 文字, type: 信息项 } }
         let placeholderMap = new Map();
-
-        // ========== 初始化 ==========
-        marked.setOptions({
-            highlight: (code, lang) => {
-                if (lang && hljs.getLanguage(lang)) {
-                    return hljs.highlight(code, { language: lang }).value;
-                }
-                return hljs.highlightAuto(code).value;
-            },
-            breaks: true,
-            gfm: true,
-            tables: true // 强制开启表格解析（marked默认开启，显式声明更保险）
-        });
-
-        updatePreview();
 
         // ========== 核心功能 ==========
         textArea.addEventListener('mouseup', handleSelection);
         textArea.addEventListener('keyup', handleSelection);
         textArea.addEventListener('selectionchange', handleSelection);
-        textArea.addEventListener('input', () => {
-            syncMarkdownSource();
-            updatePreview();
-        });
+        textArea.addEventListener('input', syncTextSource);
 
         function handleSelection() {
             const selection = window.getSelection();
             selectedText = selection.toString().trim();
 
-            categoryBtns.forEach(btn => {
-                btn.disabled = !selectedText;
-                btn.classList.toggle('disabled', !selectedText);
+            infoItemBtns.forEach(btn => {
+                if (!selectedText) {
+                    btn.disabled = true;
+                    btn.classList.add('disabled');
+                } else {
+                    btn.disabled = false;
+                    btn.classList.remove('disabled');
+                }
             });
 
             selectedRange = selectedText && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
         }
 
-        categoryBtns.forEach(btn => {
+        [btnCustomerName, btnContactInfo, btnContractId, btnContractAmount, btnOther].forEach(btn => {
             btn.addEventListener('click', () => {
                 if (!selectedRange || !selectedText) return;
 
@@ -379,63 +109,47 @@
 
                 // 替换选中文本为带样式的span，并存储占位符映射
                 replaceSelectedText(type, selectedText, placeholder);
-                // 记录分类数据
-                addCategoryRecord(selectedText, type, typeName);
+                // 记录信息项数据
+                addInfoItemRecord(selectedText, type, typeName);
                 // 存储占位符映射
                 placeholderMap.set(placeholder, { text: selectedText, type: type });
 
                 window.getSelection().removeAllRanges();
-                categoryBtns.forEach(b => {
+                infoItemBtns.forEach(b => {
                     b.disabled = true;
                     b.classList.add('disabled');
                 });
-                syncMarkdownSource();
-                updatePreview();
+                syncTextSource();
             });
         });
 
-        // ========== 核心修改：修复表格渲染 + 换行保留 ==========
-        /**
-         * 提取编辑区文本，保留Markdown原始格式（尤其是表格），同时替换span为唯一占位符
-         */
-        function syncMarkdownSource() {
-            // 步骤1：先获取编辑区的innerText（保留视觉上的换行和空格，适合Markdown）
-            let rawText = textArea.innerText;
+        // ========== 文本同步 ==========
+        function syncTextSource() {
+            // 获取原始HTML内容而不是纯文本，保留格式包括换行
+            let htmlContent = textArea.innerHTML;
 
-            // 步骤2：遍历所有分类span，替换为唯一占位符（避免干扰表格语法）
-            const spans = textArea.querySelectorAll('span.noun, span.verb, span.adjective, span.other');
+            // 遍历所有信息项span，替换为唯一占位符（避免重复文本替换错误）
+            const spans = textArea.querySelectorAll('span.customer_name, span.contact_info, span.contract_id, span.contract_amount, span.other');
             spans.forEach(span => {
                 const placeholder = span.getAttribute('data-placeholder');
                 if (placeholder) {
-                    // 由于innerText无法直接定位span，这里采用：先记录span的文本，再替换rawText中的对应文本为占位符
-                    // 优化：使用唯一占位符避免重复文本替换错误
-                    const spanText = span.textContent;
-                    // 注意：这里需要确保spanText在rawText中是唯一的，因此使用唯一占位符是关键
-                    rawText = rawText.replace(spanText, placeholder);
+                    const spanOuterHtml = span.outerHTML;
+                    // 使用正则表达式安全地替换span为占位符，保留换行符和其他格式
+                    htmlContent = htmlContent.replace(spanOuterHtml, placeholder);
+
+                    // 后续再将占位符替换回span格式
+                    htmlContent = htmlContent.replace(new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
+                        spanOuterHtml);
                 }
             });
 
-            // 步骤3：同步到隐藏的textarea
-            markdownSource.value = rawText;
+            // 保持原有HTML结构
+            textArea.innerHTML = htmlContent;
         }
 
         /**
-         * 还原占位符为带样式的span标签（支持表格内的占位符）
-         * @param {string} html - marked解析后的HTML字符串
-         * @returns {string} 处理后的HTML字符串
-         */
-        function restorePlaceholders(html) {
-            // 遍历占位符映射，替换所有占位符为span
-            placeholderMap.forEach((data, placeholder) => {
-                const regex = new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
-                html = html.replace(regex, `<span class="${data.type}">${data.text}</span>`);
-            });
-            return html;
-        }
-
-        /**
-         * 替换选中的文本为带分类样式的span（新增唯一占位符属性）
-         * @param {string} type - 分类类型
+         * 替换选中的文本为带信息项样式的span（新增唯一占位符属性）
+         * @param {string} type - 信息项类型
          * @param {string} text - 选中的文本
          * @param {string} placeholder - 唯一占位符
          */
@@ -447,6 +161,27 @@
 
             const span = document.createElement('span');
             span.className = type;
+            span.classList.add('px-1', 'rounded-sm', 'mr-1');
+
+            // Add custom styling based on type
+            switch(type) {
+                case 'customer_name':
+                    span.classList.add('bg-blue-100', 'text-blue-800');
+                    break;
+                case 'contact_info':
+                    span.classList.add('bg-green-100', 'text-green-800');
+                    break;
+                case 'contract_id':
+                    span.classList.add('bg-yellow-100', 'text-yellow-800');
+                    break;
+                case 'contract_amount':
+                    span.classList.add('bg-purple-100', 'text-purple-800');
+                    break;
+                case 'other':
+                    span.classList.add('bg-indigo-100', 'text-indigo-800');
+                    break;
+            }
+
             span.textContent = text;
             span.setAttribute('data-text', text);
             span.setAttribute('data-placeholder', placeholder); // 存储唯一占位符
@@ -463,59 +198,89 @@
         }
 
         // ========== 其他工具函数 ==========
-        function addCategoryRecord(text, type, typeName) {
-            const existingIndex = categoryRecord.findIndex(item => item.text === text);
+        function addInfoItemRecord(text, type, typeName) {
+            const existingIndex = infoItemRecord.findIndex(item => item.text === text);
             if (existingIndex > -1) {
-                categoryRecord[existingIndex] = { text, type, typeName };
+                infoItemRecord[existingIndex] = { text, type, typeName };
             } else {
-                categoryRecord.push({ text, type, typeName });
+                infoItemRecord.push({ text, type, typeName });
             }
-            updateCategoryDataDisplay();
+            updateInfoItemDataDisplay();
         }
 
-        function updateCategoryDataDisplay() {
-            categoryData.textContent = categoryRecord.length === 0
-                ? '暂无分类数据'
-                : categoryRecord.map((item, index) => `${index + 1}. 词汇：${item.text} | 分类：${item.typeName}（${item.type}）`).join('\n');
+        function removeInfoItemRecord(text) {
+            const index = infoItemRecord.findIndex(item => item.text === text);
+            if (index > -1) {
+                infoItemRecord.splice(index, 1);
+                updateInfoItemDataDisplay();
+                return true;
+            }
+            return false;
         }
 
-        function updatePreview() {
-            const mdText = markdownSource.value || '';
-            let html = marked.parse(mdText);
-            html = restorePlaceholders(html);
-            previewArea.innerHTML = html;
-            // 重新高亮代码块
-            previewArea.querySelectorAll('pre code').forEach(block => {
-                hljs.highlightElement(block);
-            });
+        function updateInfoItemDataDisplay() {
+            infoItemData.textContent = infoItemRecord.length === 0
+                ? '暂无信息项数据'
+                : infoItemRecord.map((item, index) => `${index + 1}. 文字：${item.text} | 信息项：${item.typeName}（${item.type}）`).join('\n');
         }
+
+        // ========== 取消标定功能 ==========
+        function unmarkText(spanElement) {
+            const originalText = spanElement.getAttribute('data-text');
+            const placeholder = spanElement.getAttribute('data-placeholder');
+
+            // Remove from records
+            removeInfoItemRecord(originalText);
+
+            // Remove from placeholder map
+            placeholderMap.delete(placeholder);
+
+            // Replace span with original text
+            const textNode = document.createTextNode(originalText);
+            spanElement.parentNode.replaceChild(textNode, spanElement);
+        }
+
+        // Add event listener to text area for clicks on marked text
+        textArea.addEventListener('click', function(event) {
+            if (event.target.tagName === 'SPAN' &&
+                (event.target.classList.contains('customer_name') ||
+                 event.target.classList.contains('contact_info') ||
+                 event.target.classList.contains('contract_id') ||
+                 event.target.classList.contains('contract_amount') ||
+                 event.target.classList.contains('other'))) {
+
+                // Prevent text selection when clicking on marked text
+                event.preventDefault();
+
+                // Unmark the clicked text
+                unmarkText(event.target);
+            }
+        });
 
         // ========== 扩展功能 ==========
         resetBtn.addEventListener('click', () => {
             textArea.innerHTML = '';
-            markdownSource.value = '';
-            previewArea.innerHTML = '';
-            categoryRecord = [];
+            infoItemRecord = [];
             placeholderMap.clear(); // 清空占位符映射
-            updateCategoryDataDisplay();
-            categoryBtns.forEach(btn => {
+            updateInfoItemDataDisplay();
+            infoItemBtns.forEach(btn => {
                 btn.disabled = true;
                 btn.classList.add('disabled');
             });
         });
 
         exportBtn.addEventListener('click', () => {
-            if (categoryRecord.length === 0) {
-                alert('暂无分类数据可导出！');
+            if (infoItemRecord.length === 0) {
+                alert('暂无信息项数据可导出！');
                 return;
             }
 
-            const jsonData = JSON.stringify(categoryRecord, null, 2);
+            const jsonData = JSON.stringify(infoItemRecord, null, 2);
             const blob = new Blob([jsonData], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `词汇分类数据_${new Date().getTime()}.json`;
+            a.download = `信息项数据_${new Date().getTime()}.json`;
             a.click();
             URL.revokeObjectURL(url);
         });
