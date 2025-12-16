@@ -28,31 +28,18 @@
 
         <!-- Example Management Section -->
         <div class="bg-white shadow rounded-lg p-6 mb-6">
-            <h3 class="text-lg font-medium text-gray-900 mb-4">示例文本管理</h3>
+            <h3 class="text-lg font-medium text-gray-900 mb-4">示例文本</h3>
 
-            <!-- Example Text Selection -->
+            <!-- Example Text List -->
             <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">选择已有示例文本:</label>
-                <select id="example-select" class="w-full p-2 border border-gray-300 rounded-md">
-                    <option value="">-- 请选择示例文本 --</option>
-                </select>
-            </div>
-
-            <!-- New Example Input -->
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">或新增示例文本:</label>
-                <textarea id="new-example-input" rows="3" class="w-full p-2 border border-gray-300 rounded-md" placeholder="在此输入新的示例文本..."></textarea>
-                <button id="add-new-example-btn" class="mt-2 inline-flex items-center px-4 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none">
-                    <i class="fa-solid fa-plus mr-2"></i> 添加新示例
-                </button>
+                <div id="example-list" class="max-h-40 overflow-y-auto border border-gray-300 rounded-md p-2">
+                    <!-- Example items will be added here dynamically -->
+                </div>
             </div>
 
             <div class="flex space-x-3">
-                <button class="inline-flex items-center px-4 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none" id="load-example-btn">
-                    <i class="fa-solid fa-folder-open mr-2"></i> 加载所选示例
-                </button>
-                <button class="inline-flex items-center px-4 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none" id="save-example-btn">
-                    <i class="fa-solid fa-save mr-2"></i> 保存示例文本
+                <button id="add-new-example-btn" class="inline-flex items-center px-4 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none">
+                    <i class="fa-solid fa-plus mr-2"></i> 添加新示例
                 </button>
             </div>
         </div>
@@ -68,7 +55,7 @@
 
             <div>
                 <h3 class="text-sm font-medium text-gray-700 mb-2">文本编辑区</h3>
-                <div id="text-area" contenteditable="true" class="w-full min-h-[400px] p-4 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-base leading-loose bg-white whitespace-pre-wrap"></div>
+                <div id="text-area" contenteditable="true" class="w-full min-h-[300px] p-4 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-base leading-loose bg-white whitespace-pre-wrap"></div>
             </div>
 
             <div class="mb-4">
@@ -99,7 +86,7 @@
 
             <div class="flex space-x-3">
                 <button class="inline-flex items-center px-4 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none" id="save-extraction-btn">
-                    <i class="fa-solid fa-save mr-2"></i> 保存标注结果
+                    <i class="fa-solid fa-save mr-2"></i> 保存
                 </button>
             </div>
         </div>
@@ -116,11 +103,8 @@
         const btnOther = document.getElementById('btn-other');
 
         // Example management elements
-        const exampleSelect = document.getElementById('example-select');
-        const newExampleInput = document.getElementById('new-example-input');
+        const exampleList = document.getElementById('example-list');
         const addNewExampleBtn = document.getElementById('add-new-example-btn');
-        const loadExampleBtn = document.getElementById('load-example-btn');
-        const saveExampleBtn = document.getElementById('save-example-btn');
 
         // Extraction management elements
         const extractionTable = document.getElementById('extraction-table');
@@ -151,30 +135,41 @@
                 {id: 3, fragment: "其他信息可能包括地址、日期等具体内容"}
             ];
 
-            updateExampleSelect();
+            updateExampleList();
         }
 
-        function updateExampleSelect() {
-            // 清空选项
-            exampleSelect.innerHTML = '<option value="">-- 请选择示例文本 --</option>';
+        function updateExampleList() {
+            // 清空列表
+            exampleList.innerHTML = '';
 
             // 添加所有示例
             examples.forEach(example => {
-                const option = document.createElement('option');
-                option.value = example.id;
-                option.textContent = `示例 ${example.id}: ${example.fragment.substring(0, 40)}${example.fragment.length > 40 ? '...' : ''}`;
-                exampleSelect.appendChild(option);
+                const div = document.createElement('div');
+                div.className = 'example-item p-2 border-b border-gray-200 cursor-pointer hover:bg-gray-50 flex justify-between items-center';
+                div.dataset.id = example.id;
+
+                const text = document.createElement('span');
+                text.textContent = `示例 ${example.id}: ${example.fragment.substring(0, 60)}${example.fragment.length > 60 ? '...' : ''}`;
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-example-btn text-red-500 hover:text-red-700 text-sm';
+                deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                deleteBtn.onclick = (e) => {
+                    e.stopPropagation(); // Prevent triggering the load example action
+                    deleteExample(example.id);
+                };
+
+                div.appendChild(text);
+                div.appendChild(deleteBtn);
+
+                div.onclick = () => loadExampleById(example.id);
+
+                exampleList.appendChild(div);
             });
         }
 
-        function loadExample() {
-            const selectedId = parseInt(exampleSelect.value);
-            if (!selectedId) {
-                alert('请选择一个示例文本');
-                return;
-            }
-
-            const example = examples.find(e => e.id === selectedId);
+        function loadExampleById(id) {
+            const example = examples.find(e => e.id === id);
             if (example) {
                 textArea.innerHTML = example.fragment;
                 currentExampleId = example.id;
@@ -210,26 +205,53 @@
                 currentExampleId = newId;
             }
 
-            updateExampleSelect();
+            updateExampleList();
             alert('示例文本已保存');
         }
 
         function addNewExample() {
-            const textContent = newExampleInput.value.trim();
-            if (!textContent) {
-                alert('请输入示例文本');
-                return;
-            }
+            // Clear existing content in text area
+            textArea.innerHTML = '';
+            currentExampleId = null;
 
+            // Clear extraction table
+            extractions = [];
+            renderExtractions();
+
+            // If no text in input, add an empty example
             const newId = examples.length > 0 ? Math.max(...examples.map(e => e.id)) + 1 : 1;
             examples.push({
                 id: newId,
-                fragment: textContent
+                fragment: ''
             });
 
-            newExampleInput.value = '';
-            updateExampleSelect();
-            alert('新示例已添加，请从下拉框中选择并加载');
+            updateExampleList();
+
+            // Select the newly added empty example
+            setTimeout(() => {
+                const newItem = document.querySelector(`.example-item[data-id="${newId}"]`);
+                if(newItem) {
+                    newItem.click();
+                }
+            }, 100);
+        }
+
+        function deleteExample(id) {
+            if (confirm('确定要删除这个示例吗？')) {
+                examples = examples.filter(e => e.id !== id);
+
+                // Also delete related extractions
+                extractions = extractions.filter(ex => ex.exampleId !== id);
+
+                // If we're deleting the currently loaded example, clear the editor
+                if (currentExampleId === id) {
+                    textArea.innerHTML = '';
+                    currentExampleId = null;
+                    renderExtractions(); // Clear the extraction table
+                }
+
+                updateExampleList();
+            }
         }
 
         // ========== 提取结果管理 ==========
@@ -598,8 +620,6 @@
         });
 
         // ========== 事件监听 ==========
-        loadExampleBtn.addEventListener('click', loadExample);
-        saveExampleBtn.addEventListener('click', saveExample);
         addNewExampleBtn.addEventListener('click', addNewExample);
         addAttrBtn.addEventListener('click', addAttribute);
         saveExtractionBtn.addEventListener('click', saveExtractions);
