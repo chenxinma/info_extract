@@ -51,8 +51,7 @@
                 <h2 class="text-lg font-medium text-gray-900 mb-4 flex items-center">
                     <i class="fa-solid fa-cog mr-2"></i>配置管理
                 </h2>
-                <div class="overflow-x-auto">
-                    <iframe src="config/info_item_ui" width="100%" height="1000px" frameborder="0"></iframe>
+                <div class="overflow-x-auto" id="config_container">
                 </div>
             </div>
         </div>
@@ -194,6 +193,24 @@
                 document.getElementById('nav-task').classList.add('border-indigo-500', 'text-gray-900');
             }
         }
+        function autoResize(event) {
+            // 获取iframe元素:
+            const iframeEle = event.target;
+            // 创建一个ResizeObserver:
+            const resizeRo = new ResizeObserver((entries) => {
+                let entry = entries[0];
+                let height = entry.contentRect.height;
+                iframeEle.style.height = height + 'px';
+            });
+            // 开始监控iframe的body元素:
+            resizeRo.observe(iframeEle.contentWindow.document.body);
+        }
+
+        const iframe2 = document.createElement('iframe');
+        iframe2.width = "100%";
+        iframe2.src = '/config/info_item_list';
+        iframe2.onload = autoResize;
+        document.getElementById('config_container').appendChild(iframe2);
     </script>
     <script>
         // 实际功能的JavaScript

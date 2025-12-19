@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>划词信息项标记</title>
+    <!-- 引入Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入Font Awesome图标 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- 引入统一样式文件 -->
+    <link href="/static/styles.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans">
+    <div class="container mx-auto p-6 max-w-7xl">
+        <!-- Example Management Section -->
+        <div class="bg-white shadow rounded-lg p-6 mb-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">示例文本</h3>
+
+            <!-- Example Text List -->
+            <div class="mb-4">
+                <div id="example-list" class="max-h-40 overflow-y-auto border border-gray-300 rounded-md p-2">
+                    <!-- Example items will be added here dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white shadow rounded-lg p-6 mb-6">
+            <div class="flex flex-wrap gap-2 mb-4" id="info-item-list">
+                <button class="info-item-btn bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed" data-info-item-id="customer_name" id="btn-customer_name" disabled>客户名称</button>
+                <button class="info-item-btn bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed" data-info-item-id="contact_info" id="btn-contact_info" disabled>联系方式</button>
+                <button class="info-item-btn bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed" data-info-item-id="contract_id" id="btn-contract_id" disabled>合同编号</button>
+                <button class="info-item-btn bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed" data-info-item-id="contract_amount" id="btn-contract_amount" disabled>合同金额</button>
+                <button class="info-item-btn bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed" data-info-item-id="other" id="btn-other" disabled>其他信息</button>
+            </div>
+
+            <div>
+                <h3 class="text-sm font-medium text-gray-700 mb-2">文本编辑区</h3>
+                <div id="text-area" contenteditable="true" class="w-full min-h-[300px] p-4 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-base leading-loose bg-white whitespace-pre-wrap"></div>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">标注结果详情</label>
+                <table class="min-w-full divide-y divide-gray-200" id="extraction-table">
+                    <thead>
+                        <tr>
+                            <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">文本</th>
+                            <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">信息项</th>
+                            <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">属性</th>
+                            <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="extraction-tbody" class="bg-white divide-y divide-gray-200"></tbody>
+                </table>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">新增属性</label>
+                <div class="flex space-x-2">
+                    <input type="text" id="attr-key" placeholder="属性名" class="flex-1 p-2 border border-gray-300 rounded-md">
+                    <input type="text" id="attr-value" placeholder="属性值" class="flex-1 p-2 border border-gray-300 rounded-md">
+                    <button class="inline-flex items-center px-4 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none" id="add-attr-btn">
+                        <i class="fa-solid fa-plus mr-2"></i> 添加属性
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex space-x-3">
+                <button class="inline-flex items-center px-4 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none" id="save-extraction-btn">
+                    <i class="fa-solid fa-save mr-2"></i> 保存
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========== 元素获取 ==========
+        const textArea = document.getElementById('text-area');
+        const cInfoItemList = document.getElementById('info-item-list');
+
+        // Example management elements
+        const exampleList = document.getElementById('example-list');
+
+        // Extraction management elements
+        const extractionTable = document.getElementById('extraction-table');
+        const extractionTbody = document.getElementById('extraction-tbody');
+        const attrKeyInput = document.getElementById('attr-key');
+        const attrValueInput = document.getElementById('attr-value');
+        const addAttrBtn = document.getElementById('add-attr-btn');
+        const saveExtractionBtn = document.getElementById('save-extraction-btn');
+
+        
+        function generate32Colors() {
+            const colors = [];
+            const total = 32;
+            
+            for (let i = 0; i < total; i++) {
+                // 计算色相（0-360度），均匀分布
+                const hue = Math.round((i * 360) / total);
+                // 饱和度固定较高值，保证颜色鲜艳
+                const saturation = 70 + Math.floor(Math.random() * 20); // 70-90%
+                // 亮度固定中等值，保证可读性
+                const lightness = 45 + Math.floor(Math.random() * 15); // 45-60%
+                
+                colors.push(`hsl(${hue}, ${saturation}%, ${lightness}%)`);
+            }
+            
+            return colors;
+        }
+        const fixed32Colors = generate32Colors();
+
+        // ========== 全局变量 ==========
+        let selectedRange = null;
+        let selectedText = '';
+        let infoItemRecord = [];
+        // 存储信息项标记的映射：{ 占位符: { text: 文字, type: 信息项 } }
+        let placeholderMap = new Map();
+        let examples = []; // 存储所有示例文本
+        let currentExampleId = null; // 当前正在编辑的示例ID
+        let extractions = []; // 存储当前示例的所有提取结果
+        let selectedExtraction = null; // 当前选中的提取结果
+        let infoItemBtns = [];
+        let infoItems = []; // Store available info items
+
+        // ========== 示例文本管理 ==========
+        async function loadExamples() {
+            try {
+                const response = await fetch('/config/example');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                examples = await response.json();
+                updateExampleList();
+            } catch (error) {
+                console.error('Error loading examples:', error);
+                showError('加载示例文本失败: ' + error.message);
+            }
+        }
+
+        function updateExampleList() {
+            // 清空列表
+            exampleList.innerHTML = '';
+
+            // 添加所有示例
+            examples.forEach(example => {
+                const div = document.createElement('div');
+                div.className = 'example-item p-2 border-b border-gray-200 cursor-pointer hover:bg-gray-50 flex justify-between items-center';
+                div.dataset.id = example.id;
+
+                const text = document.createElement('span');
+                text.textContent = `示例 ${example.id}: ${example.fragment.substring(0, 60)}${example.fragment.length > 60 ? '...' : ''}`;
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-example-btn text-red-500 hover:text-red-700 text-sm';
+                deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                deleteBtn.onclick = (e) => {
+                    e.stopPropagation(); // Prevent triggering the load example action
+                    deleteExample(example.id);
+                };
+
+                div.appendChild(text);
+                div.appendChild(deleteBtn);
+
+                div.onclick = () => loadExampleById(example.id);
+
+                exampleList.appendChild(div);
+            });
+        }
+
+        async function loadExampleById(id) {
+            try {
+                const response = await fetch(`/config/example/${id}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const example = await response.json();
+
+                textArea.innerHTML = example.fragment;
+                currentExampleId = example.id;
+
+                // 加载此示例对应的提取结果
+                await loadExtractionsForExample(example.id);
+
+                // 显示当前示例的提取结果
+                renderExtractions();
+            } catch (error) {
+                console.error('Error loading example:', error);
+                showError('加载示例文本失败: ' + error.message);
+            }
+        }
+
+        async function saveExample() {
+            const textContent = textArea.innerHTML || textArea.innerText;
+            if (!textContent.trim()) {
+                alert('请先输入示例文本');
+                return;
+            }
+
+            try {
+                if (currentExampleId) {
+                    // 更新现有示例
+                    const response = await fetch(`/config/example/${currentExampleId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: `fragment=${encodeURIComponent(textContent)}`
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const updatedExample = await response.json();
+                    // Update the examples array with the updated example
+                    const index = examples.findIndex(e => e.id === currentExampleId);
+                    if (index !== -1) {
+                        examples[index] = updatedExample;
+                    }
+                    showSuccess('示例文本已更新');
+                } else {
+                    // 创建新示例
+                    const response = await fetch('/config/example', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: `fragment=${encodeURIComponent(textContent)}`
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const newExample = await response.json();
+                    examples.push(newExample);
+                    currentExampleId = newExample.id;
+                    showSuccess('新示例文本已创建');
+                }
+
+                updateExampleList();
+            } catch (error) {
+                console.error('Error saving example:', error);
+                showError('保存示例文本失败: ' + error.message);
+                throw error;
+            }
+        }
+
+        async function addNewExample() {
+            // Clear existing content in text area
+            textArea.innerHTML = '';
+            currentExampleId = null;
+
+            // Clear extraction table
+            extractions = [];
+            renderExtractions();
+
+            try {
+                // Create a new empty example via API
+                const response = await fetch('/config/example', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: 'fragment='
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const newExample = await response.json();
+                examples.push(newExample);
+                currentExampleId = newExample.id;
+
+                updateExampleList();
+
+                // Select the newly added empty example
+                setTimeout(() => {
+                    const newItem = document.querySelector(`.example-item[data-id="${newExample.id}"]`);
+                    if(newItem) {
+                        newItem.click();
+                    }
+                }, 100);
+            } catch (error) {
+                console.error('Error adding new example:', error);
+                showError('添加新示例失败: ' + error.message);
+            }
+        }
+
+        async function deleteExample(id) {
+            if (confirm('确定要删除这个示例吗？')) {
+                try {
+                    const response = await fetch(`/config/example/${id}`, {
+                        method: 'DELETE'
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    examples = examples.filter(e => e.id !== id);
+
+                    // Also delete related extractions
+                    extractions = extractions.filter(ex => ex.exampleId !== id);
+
+                    // If we're deleting the currently loaded example, clear the editor
+                    if (currentExampleId === id) {
+                        textArea.innerHTML = '';
+                        currentExampleId = null;
+                        renderExtractions(); // Clear the extraction table
+                    }
+
+                    updateExampleList();
+                    showSuccess('示例文本已删除');
+                } catch (error) {
+                    console.error('Error deleting example:', error);
+                    showError('删除示例文本失败: ' + error.message);
+                }
+            }
+        }
+
+        // ========== 提取结果管理 ==========
+        async function loadExtractionsForExample(exampleId) {
+            try {
+                const response = await fetch(`/config/example/${exampleId}/extractions`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const apiExtractions = await response.json();
+
+                // Transform API response to match internal structure
+                extractions = apiExtractions.map(ex => ({
+                    id: ex.id,
+                    exampleId: ex.example_id,
+                    text: ex.extraction_text,
+                    infoItemLabel: ex.info_item_label.toLowerCase().replace(/\s+/g, '_'),
+                    infoItemId: ex.extraction_info_item_id,
+                    attributes: [] // We'll load attributes separately
+                }));
+
+                // Load attributes for each extraction
+                for (let i = 0; i < extractions.length; i++) {
+                    const extraction = extractions[i];
+                    extraction.attributes = await loadAttributesForExtraction(extraction.id);
+                }
+            } catch (error) {
+                console.error('Error loading extractions:', error);
+                showError('加载提取结果失败: ' + error.message);
+            }
+        }
+
+        async function loadAttributesForExtraction(extractionId) {
+            try {
+                const response = await fetch(`/config/extractions/${extractionId}/attributes`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const attributes = await response.json();
+                // Transform to match internal structure
+                return attributes.map(attr => ({
+                    id: attr.id,
+                    key: attr.key,
+                    value: attr.value
+                }));
+            } catch (error) {
+                console.error('Error loading attributes:', error);
+                showError('加载提取结果属性失败: ' + error.message);
+                return [];
+            }
+        }
+
+        function renderExtractions() {
+            extractionTbody.innerHTML = '';
+
+            extractions.forEach(extraction => {
+                const row = document.createElement('tr');
+
+                // 创建文本单元格
+                const textCell = document.createElement('td');
+                textCell.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-500';
+                textCell.textContent = extraction.text;
+
+                // 创建信息项单元格
+                const typeCell = document.createElement('td');
+                typeCell.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-500';
+
+                // 根据类型显示对应的中文名称
+                typeCell.textContent = `${extraction.infoItemLabel}`;
+
+                // 创建属性单元格
+                const attrCell = document.createElement('td');
+                attrCell.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-500';
+
+                if (extraction.attributes && extraction.attributes.length > 0) {
+                    const attrList = extraction.attributes.map(attr => `${attr.key}:${attr.value}`).join(', ');
+                    attrCell.textContent = attrList;
+                } else {
+                    attrCell.textContent = '无';
+                }
+
+                // 创建操作单元格
+                const actionCell = document.createElement('td');
+                actionCell.className = 'px-6 py-4 whitespace-nowrap text-sm font-medium';
+
+                const selectBtn = document.createElement('button');
+                selectBtn.className = 'text-indigo-600 hover:text-indigo-900 mr-2';
+                selectBtn.innerHTML = '<i class="fas fa-edit"></i> 选择';
+                selectBtn.onclick = () => selectExtraction(extraction);
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'text-red-600 hover:text-red-900';
+                deleteBtn.innerHTML = '<i class="fas fa-trash"></i> 删除';
+                deleteBtn.onclick = () => deleteExtraction(extraction.id);
+
+                actionCell.appendChild(selectBtn);
+                actionCell.appendChild(deleteBtn);
+
+                row.appendChild(textCell);
+                row.appendChild(typeCell);
+                row.appendChild(attrCell);
+                row.appendChild(actionCell);
+
+                extractionTbody.appendChild(row);
+            });
+        }
+
+        function selectExtraction(extraction) {
+            selectedExtraction = extraction;
+            // 在界面上高亮显示选中的提取结果
+            Array.from(extractionTbody.children).forEach((row, index) => {
+                if (extractions[index].id === extraction.id) {
+                    row.classList.add('bg-blue-50');
+                } else {
+                    row.classList.remove('bg-blue-50');
+                }
+            });
+        }
+
+        async function deleteExtraction(extractionId) {
+            if (confirm('确定要删除这个提取结果吗？')) {
+                try {
+                    const response = await fetch(`/config/extractions/${extractionId}`, {
+                        method: 'DELETE'
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    extractions = extractions.filter(ex => ex.id !== extractionId);
+                    renderExtractions();
+                    if (selectedExtraction && selectedExtraction.id === extractionId) {
+                        selectedExtraction = null;
+                    }
+                    showSuccess('提取结果已删除');
+                } catch (error) {
+                    console.error('Error deleting extraction:', error);
+                    showError('删除提取结果失败: ' + error.message);
+                }
+            }
+        }
+
+        async function addAttribute() {
+            if (!selectedExtraction) {
+                alert('请先选择一个提取结果');
+                return;
+            }
+
+            const key = attrKeyInput.value.trim();
+            const value = attrValueInput.value.trim();
+
+            if (!key || !value) {
+                alert('请输入属性名和属性值');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/config/extractions/${selectedExtraction.id}/attributes`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `key=${encodeURIComponent(key)}&value=${encodeURIComponent(value)}`
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const newAttribute = await response.json();
+
+                // 检查是否已存在相同的属性键
+                const existingIndex = selectedExtraction.attributes.findIndex(attr => attr.key === key);
+                if (existingIndex !== -1) {
+                    // 更新现有属性
+                    selectedExtraction.attributes[existingIndex] = {
+                        id: newAttribute.id,
+                        key: newAttribute.key,
+                        value: newAttribute.value
+                    };
+                } else {
+                    // 添加新属性
+                    selectedExtraction.attributes.push({
+                        id: newAttribute.id,
+                        key: newAttribute.key,
+                        value: newAttribute.value
+                    });
+                }
+
+                // 清空输入框
+                attrKeyInput.value = '';
+                attrValueInput.value = '';
+
+                // 重新渲染表格
+                renderExtractions();
+
+                // 再次选中当前提取结果
+                selectExtraction(selectedExtraction);
+
+                showSuccess('属性已添加');
+            } catch (error) {
+                console.error('Error adding attribute:', error);
+                showError('添加属性失败: ' + error.message);
+            }
+        }
+
+        async function saveExtractions() {
+            if (!currentExampleId) {
+                alert('请先加载或保存一个示例文本');
+                return;
+            }
+
+            // Update all extraction exampleIds to ensure they match the current example
+            extractions.forEach(extraction => {
+                extraction.exampleId = currentExampleId;
+            });
+
+            try {
+                // Save all extractions - we'll just update the local state since extractions
+                // are created/updated individually when marking text
+                // Re-render the extraction results
+                renderExtractions();
+                showSuccess('标注结果已保存');
+            } catch (error) {
+                console.error('Error saving extractions:', error);
+                showError('保存标注结果失败: ' + error.message);
+            }
+        }
+
+        // ========== 信息项数据管理 ==========
+        async function loadInfoItems() {
+            try {
+                const response = await fetch('/config/info_item');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                cInfoItemList.innerHTML = '';
+                infoItemBtns = [];
+                infoItems = await response.json();
+                infoItems.forEach((item, index) => {
+                    const btn = document.createElement('button');
+                    btn.className = "info-item-btn hover:bg-blue-600 text-white px-4 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed";
+                    btn.setAttribute("data-info-item-id", item['id']);
+                    btn.setAttribute("style", "background-color:" + fixed32Colors[index]);
+                    btn.disabled = true;
+                    btn.innerText = item['label']
+                    hookPickEvent(btn);
+                    cInfoItemList.append(btn);
+                    infoItemBtns.push(btn);
+                })
+
+                // Update button states based on available info items
+                updateInfoItemButtons();
+            } catch (error) {
+                console.error('Error loading info items:', error);
+                showError('加载信息项失败: ' + error.message);
+            }
+        }
+
+        function updateInfoItemButtons() {
+            // Enable all info item buttons if we have info items
+            infoItemBtns.forEach(btn => {
+                btn.disabled = infoItems.length === 0;
+                if (infoItems.length === 0) {
+                    btn.classList.add('disabled');
+                } else {
+                    btn.classList.remove('disabled');
+                }
+            });
+        }
+
+        // ========== 核心功能 (保留原有的划词交互) ==========
+        textArea.addEventListener('mouseup', handleSelection);
+        textArea.addEventListener('keyup', handleSelection);
+        textArea.addEventListener('selectionchange', handleSelection);
+        textArea.addEventListener('input', syncTextSource);
+
+        function handleSelection() {
+            const selection = window.getSelection();
+            selectedText = selection.toString().trim();
+
+            infoItemBtns.forEach(btn => {
+                if (!selectedText) {
+                    btn.disabled = true;
+                    btn.classList.add('disabled');
+                } else {
+                    btn.disabled = false;
+                    btn.classList.remove('disabled');
+                }
+            });
+
+            selectedRange = selectedText && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+        }
+
+        function hookPickEvent(btn) {
+            btn.addEventListener('click', async () => {
+                if (!selectedRange || !selectedText) return;
+
+                const infoItemId = btn.getAttribute('data-info-item-id');
+                const typeName = btn.textContent;
+
+                if (!infoItemId) {
+                    showError('未找到对应的信息项');
+                    return;
+                }
+
+                // 生成唯一占位符（避免与表格符号冲突）
+                const placeholder = `__${infoItemId}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}__`;
+
+                try {
+                    if (!currentExampleId) {
+                        saveExample();
+                    }
+                    // Create extraction record via API
+                    const response = await fetch('/config/extractions', {
+                        method: 'POST',                        
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: `example_id=${currentExampleId || 0}&extraction_info_item_id=${infoItemId}&extraction_text=${encodeURIComponent(selectedText)}`
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const newExtraction = await response.json();
+
+                    // Add the new extraction to our local array
+                    const extractionObj = {
+                        id: newExtraction.id,
+                        exampleId: newExtraction.example_id,
+                        text: newExtraction.extraction_text,
+                        infoItemId: infoItemId,
+                        infoItemLabel: typeName,
+                        attributes: [] // Initially empty, will be loaded later
+                    };
+
+                    // Check if an extraction with the same text and type already exists
+                    const existingIndex = extractions.findIndex(
+                        ex => ex.text === selectedText && ex.infoItemId === infoItemId
+                    );
+
+                    if (existingIndex !== -1) {
+                        // Update existing extraction
+                        extractions[existingIndex] = extractionObj;
+                    } else {
+                        // Add new extraction
+                        extractions.push(extractionObj);
+                    }
+
+                    // 替换选中文本为带样式的span，并存储占位符映射 (now with extraction ID)
+                    replaceSelectedText(infoItemId, selectedText, placeholder, newExtraction.id);
+
+                    // 记录信息项数据
+                    addInfoItemRecord(selectedText, infoItemId, typeName);
+
+                    // Re-render the extraction results table
+                    renderExtractions();
+
+                    // Store placeholder mapping
+                    placeholderMap.set(placeholder, { text: selectedText, type: infoItemId });
+
+                    showSuccess('提取结果已添加');
+                } catch (error) {
+                    console.error('Error creating extraction:', error);
+                    showError('创建提取结果失败: ' + error.message);
+
+                    // Revert the UI changes if API call failed
+                    // Since we only create the span after API success, no need to revert UI here
+                }
+
+                window.getSelection().removeAllRanges();
+                infoItemBtns.forEach(b => {
+                    b.disabled = true;
+                    b.classList.add('disabled');
+                });
+                syncTextSource();
+            });
+        }
+
+        // ========== 错误和成功提示 ==========
+        function showError(message) {
+            // Remove any existing alerts
+            const existingAlert = document.querySelector('.alert-error');
+            if (existingAlert) {
+                existingAlert.remove();
+            }
+
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert-error bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4';
+            alertDiv.innerHTML = `
+                <strong>错误: </strong> ${message}
+                <span class="float-right cursor-pointer" onclick="this.parentElement.remove()">&times;</span>
+            `;
+
+            document.querySelector('.container').prepend(alertDiv);
+
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 5000);
+        }
+
+        function showSuccess(message) {
+            // Remove any existing alerts
+            const existingAlert = document.querySelector('.alert-success');
+            if (existingAlert) {
+                existingAlert.remove();
+            }
+
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert-success bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4';
+            alertDiv.innerHTML = `
+                <strong>成功: </strong> ${message}
+                <span class="float-right cursor-pointer" onclick="this.parentElement.remove()">&times;</span>
+            `;
+
+            document.querySelector('.container').prepend(alertDiv);
+
+            // Auto-remove after 3 seconds
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 3000);
+        }
+
+        // ========== 测试功能 ==========
+        function testIntegration() {
+            // 添加示例文本
+            textArea.innerHTML = "这是一段测试文本，包含客户名称张三，联系方式是13888888888，合同编号为CT-2023-001，金额为50000元。";
+
+            alert("测试文本已添加，现在可以尝试划词标注功能。请选中部分文本并点击对应的标注按钮。");
+        }
+
+
+        // ========== 文本同步 ==========
+        function syncTextSource() {
+            // 获取原始HTML内容而不是纯文本，保留格式包括换行
+            let htmlContent = textArea.innerHTML;
+
+            // 遍历所有信息项span，替换为唯一占位符（避免重复文本替换错误）
+            const spans = textArea.querySelectorAll('span.customer_name, span.contact_info, span.contract_id, span.contract_amount, span.other');
+            spans.forEach(span => {
+                const placeholder = span.getAttribute('data-placeholder');
+                if (placeholder) {
+                    const spanOuterHtml = span.outerHTML;
+                    // 使用正则表达式安全地替换span为占位符，保留换行符和其他格式
+                    htmlContent = htmlContent.replace(spanOuterHtml, placeholder);
+
+                    // 后续再将占位符替换回span格式
+                    htmlContent = htmlContent.replace(new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
+                        spanOuterHtml);
+                }
+            });
+
+            // 保持原有HTML结构
+            textArea.innerHTML = htmlContent;
+        }
+
+        /**
+         * 替换选中的文本为带信息项样式的span（新增唯一占位符属性）
+         * @param {int} infoItemId - 信息项ID
+         * @param {string} text - 选中的文本
+         * @param {string} placeholder - 唯一占位符
+         * @param {number} extractionId - 提取结果ID（可选）
+         */
+        function replaceSelectedText(infoItemId, text, placeholder, extractionId = null) {
+            const selectedNode = selectedRange.commonAncestorContainer.parentElement;
+            if (selectedNode.classList.contains(infoItemId) && selectedNode.getAttribute('data-placeholder')) {
+                return;
+            }
+            let index = infoItemBtns.findIndex(btn => {
+                return btn.getAttribute('data-info-item-id') == infoItemId
+            });
+
+            const span = document.createElement('span');
+            span.className = infoItemId;
+            span.classList.add('px-1', 'rounded-sm', 'mr-1');
+            span.style.backgroundColor = fixed32Colors[index];
+            console.log(fixed32Colors[index], index);
+
+            span.textContent = text;
+            span.setAttribute('data-text', text);
+            span.setAttribute('data-placeholder', placeholder); // 存储唯一占位符
+
+            // Store extraction ID if provided
+            if (extractionId) {
+                span.setAttribute('data-extraction-id', extractionId);
+            }
+
+            selectedRange.deleteContents();
+            selectedRange.insertNode(span);
+
+            const newRange = document.createRange();
+            newRange.setStartAfter(span);
+            newRange.collapse(true);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(newRange);
+        }
+
+        // ========== 其他工具函数 ==========
+        function addInfoItemRecord(text, type, typeName) {
+            const existingIndex = infoItemRecord.findIndex(item => item.text === text);
+            if (existingIndex > -1) {
+                infoItemRecord[existingIndex] = { text, type, typeName };
+            } else {
+                infoItemRecord.push({ text, type, typeName });
+            }
+        }
+
+        function removeInfoItemRecord(text) {
+            const index = infoItemRecord.findIndex(item => item.text === text);
+            if (index > -1) {
+                infoItemRecord.splice(index, 1);
+                return true;
+            }
+            return false;
+        }
+
+        // ========== 取消标定功能 ==========
+        async function unmarkText(spanElement) {
+            const originalText = spanElement.getAttribute('data-text');
+            const placeholder = spanElement.getAttribute('data-placeholder');
+            // Get the extraction ID from the span element
+            const extractionId = spanElement.getAttribute('data-extraction-id');
+
+            if (originalText) {
+                // 从placeholderMap中移除映射
+                placeholderMap.delete(placeholder);
+
+                // 用原始文本替换span元素
+                const textNode = document.createTextNode(originalText);
+                spanElement.parentNode.replaceChild(textNode, spanElement);
+
+                if (extractionId) {
+                    try {
+                        // Delete the extraction from backend
+                        const response = await fetch(`/config/extractions/${extractionId}`, {
+                            method: 'DELETE'
+                        });
+
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+
+                        // 从extractions中移除对应的记录
+                        const extractionIndex = extractions.findIndex(ex => ex.id == extractionId);
+                        if (extractionIndex !== -1) {
+                            extractions.splice(extractionIndex, 1);
+                        }
+
+                        showSuccess('提取结果已取消标记');
+                    } catch (error) {
+                        console.error('Error deleting extraction:', error);
+                        showError('取消标记失败: ' + error.message);
+                    }
+                } else {
+                    // 从extractions中移除对应的记录 (fallback for cases where extractionId is not available)
+                    const extractionIndex = extractions.findIndex(ex => ex.text === originalText);
+                    if (extractionIndex !== -1) {
+                        extractions.splice(extractionIndex, 1);
+                    }
+                }
+
+                // 从infoItemRecord中移除记录
+                removeInfoItemRecord(originalText);
+
+                // 重新渲染提取结果表格
+                renderExtractions();
+            }
+        }
+
+        // 绑定取消标定功能到span元素右键菜单（可选）
+        textArea.addEventListener('contextmenu', function(e) {
+            if (e.target.tagName === 'SPAN' && e.target.hasAttribute('data-text')) {
+                e.preventDefault();
+                if (confirm('确定要取消这段文本的标记吗？')) {
+                    unmarkText(e.target);
+                }
+            }
+        });
+
+        // 为按钮绑定事件
+        document.addEventListener('DOMContentLoaded', async function() {
+            saveExtractionBtn.addEventListener('click', saveExtractions);
+            addAttrBtn.addEventListener('click', addAttribute);
+
+            // 初始化页面
+            await loadExamples();
+            await loadInfoItems();
+        });
+    </script>
+</body>
+</html>

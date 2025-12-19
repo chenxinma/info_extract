@@ -6,7 +6,7 @@ import sqlite3
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from .config_models import InfoItem, Example
+from .config_models import InfoItem, Example, ExtractionRecord, ExtractionAttribute
 from langextract.data import Extraction
 
 
@@ -48,7 +48,7 @@ class ConfigDB:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT
-                    id, label, describe, data_type, sort_no, sample_col_name
+                    id, label, describe, data_type, sort_no, sample_col_name, profile_id
                 FROM info_item
                 WHERE profile_id = ?
                 ORDER BY sort_no
@@ -63,7 +63,8 @@ class ConfigDB:
                     describe=row['describe'],
                     data_type=row['data_type'],
                     sort_no=row['sort_no'],
-                    sample_col_name=row['sample_col_name']
+                    sample_col_name=row['sample_col_name'],
+                    profile_id=row['profile_id']
                 )
                 for row in rows
             ]
@@ -84,13 +85,14 @@ class ConfigDB:
             conn = sqlite3.connect(self.db_path)
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
-            cursor.execute("SELECT id, fragment FROM example WHERE profile_id = ?", (self.active_profile_id,))
+            cursor.execute("SELECT id, fragment, profile_id FROM example WHERE profile_id = ?", (self.active_profile_id,))
 
             rows = cursor.fetchall()
             data = [
                 Example(
                     id=row['id'],
-                    fragment=row['fragment']
+                    fragment=row['fragment'],
+                    profile_id=row['profile_id']
                 )
                 for row in rows
             ]
@@ -98,6 +100,7 @@ class ConfigDB:
         finally:
             if conn:
                 conn.close()
+
 
     def get_extractions_by_example_id(self, example_id: int) -> List[Tuple[int, Extraction]]:
         """
@@ -392,3 +395,449 @@ class ConfigDB:
             profile_id: ID of the profile to activate
         """
         self.active_profile_id = profile_id
+
+
+
+    def get_example_by_id(self, example_id: int) -> Optional[Example]:
+        """
+        Get a specific example text by its ID.
+
+        Args:
+            example_id: ID of the example text to retrieve
+
+        Returns:
+            ExampleText object if found, None otherwise
+        """
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, fragment, profile_id FROM example WHERE id = ? AND profile_id = ?",
+                          (example_id, self.active_profile_id))
+
+            row = cursor.fetchone()
+            if row:
+                return Example(
+                    id=row['id'],
+                    fragment=row['fragment'],
+                    profile_id=row['profile_id']
+                )
+            return None
+        finally:
+            if conn:
+                conn.close()
+
+    def create_example(self, fragment: str) -> int:
+        """
+        Create a new example text.
+
+        Args:
+            fragment: The text fragment to store
+
+        Returns:
+            ID of the newly created example text
+        """
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO example (fragment, profile_id)
+                VALUES (?, ?)
+            """, (fragment, self.active_profile_id))
+
+            new_id = cursor.lastrowid
+            conn.commit()
+            return new_id # type: ignore
+        finally:
+            if conn:
+                conn.close()
+
+    def update_example(self, example_id: int, fragment: str) -> int:
+        """
+        Update an existing example text.
+
+        Args:
+            example_id: ID of the example text to update
+            fragment: New text fragment
+
+        Returns:
+            Number of affected rows (0 if not found, 1 if updated)
+        """
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE example
+                SET fragment = ?
+                WHERE id = ? AND profile_id = ?
+            """, (fragment, example_id, self.active_profile_id))
+
+            affected_rows = cursor.rowcount
+            conn.commit()
+            return affected_rows
+        finally:
+            if conn:
+                conn.close()
+
+    def delete_example(self, example_id: int) -> int:
+        """
+        Delete an example text and all associated extractions.
+
+        Args:
+            example_id: ID of the example text to delete
+
+        Returns:
+            Number of affected rows (0 if not found, 1 if deleted)
+        """
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            # Delete associated attributes first
+            cursor.execute("DELETE FROM ext_attribute WHERE exists (SELECT 1 FROM extraction WHERE example_id = ?) AND profile_id = ?",
+                          (example_id, self.active_profile_id))
+            # First delete associated extractions
+            cursor.execute("DELETE FROM extraction WHERE example_id = ? AND profile_id = ?",
+                          (example_id, self.active_profile_id))
+            # Then delete the example text
+            cursor.execute("DELETE FROM example WHERE id = ? AND profile_id = ?",
+                          (example_id, self.active_profile_id))
+
+            affected_rows = cursor.rowcount
+            conn.commit()
+            return affected_rows
+        finally:
+            if conn:
+                conn.close()
+
+    def get_extraction_records_by_example_id(self, example_id: int) -> List[ExtractionRecord]:
+        """
+        Get all extraction records for a specific example text.
+
+        Args:
+            example_id: ID of the example text
+
+        Returns:
+            List of ExtractionRecord objects
+        """
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT 
+                    extraction.id, 
+                    extraction.example_id, 
+                    extraction.extraction_info_item_id, 
+                    extraction.extraction_text, 
+                    extraction.profile_id,
+                    info_item.label info_item_label
+                FROM extraction
+                INNER JOIN info_item
+                ON extraction_info_item_id = info_item.id
+                WHERE extraction.example_id = ? AND extraction.profile_id = ?
+                ORDER BY extraction.id
+            """, (example_id, self.active_profile_id))
+
+            rows = cursor.fetchall()
+            data = [
+                ExtractionRecord(
+                    id=row['id'],
+                    example_id=row['example_id'],
+                    extraction_info_item_id=row['extraction_info_item_id'],
+                    extraction_text=row['extraction_text'],
+                    profile_id=row['profile_id'],
+                    info_item_label=row['info_item_label']
+                )
+                for row in rows
+            ]
+            return data
+        finally:
+            if conn:
+                conn.close()
+
+    def get_extraction_record_by_id(self, extraction_id: int) -> Optional[ExtractionRecord]:
+        """
+        Get a specific extraction record by its ID.
+
+        Args:
+            extraction_id: ID of the extraction record to retrieve
+
+        Returns:
+            ExtractionRecord object if found, None otherwise
+        """
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT 
+                    extraction.id, 
+                    extraction.example_id, 
+                    extraction.extraction_info_item_id, 
+                    extraction.extraction_text, 
+                    extraction.profile_id,
+                    info_item.label info_item_label
+                FROM extraction
+                INNER JOIN info_item
+                ON extraction_info_item_id = info_item.id
+                WHERE extraction.id = ? AND extraction.profile_id = ?
+            """, (extraction_id, self.active_profile_id))
+
+            row = cursor.fetchone()
+            if row:
+                return ExtractionRecord(
+                    id=row['id'],
+                    example_id=row['example_id'],
+                    extraction_info_item_id=row['extraction_info_item_id'],
+                    extraction_text=row['extraction_text'],
+                    profile_id=row['profile_id'],
+                    info_item_label=row['info_item_label']
+                )
+            return None
+        finally:
+            if conn:
+                conn.close()
+
+    def create_extraction_record(self, example_id: int, extraction_info_item_id: int, extraction_text: str) -> int:
+        """
+        Create a new extraction record.
+
+        Args:
+            example_id: ID of the example text this extraction belongs to
+            extraction_info_item_id: ID of the info item extracted
+            extraction_text: The extracted text
+
+        Returns:
+            ID of the newly created extraction record
+        """
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO extraction (example_id, extraction_info_item_id, extraction_text, profile_id)
+                VALUES (?, ?, ?, ?)
+            """, (example_id, extraction_info_item_id, extraction_text, self.active_profile_id))
+
+            new_id = cursor.lastrowid
+            conn.commit()
+            return new_id # type: ignore
+        finally:
+            if conn:
+                conn.close()
+
+    def update_extraction_record(self, extraction_id: int, extraction_text: str) -> int:
+        """
+        Update an existing extraction record.
+
+        Args:
+            extraction_id: ID of the extraction record to update
+            extraction_text: New extracted text
+
+        Returns:
+            Number of affected rows (0 if not found, 1 if updated)
+        """
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE extraction
+                SET extraction_text = ?
+                WHERE id = ? AND profile_id = ?
+            """, (extraction_text, extraction_id, self.active_profile_id))
+
+            affected_rows = cursor.rowcount
+            conn.commit()
+            return affected_rows
+        finally:
+            if conn:
+                conn.close()
+
+    def delete_extraction_record(self, extraction_id: int) -> int:
+        """
+        Delete an extraction record and its attributes.
+
+        Args:
+            extraction_id: ID of the extraction record to delete
+
+        Returns:
+            Number of affected rows (0 if not found, 1 if deleted)
+        """
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            # Delete associated attributes first
+            cursor.execute("DELETE FROM ext_attribute WHERE extraction_id = ? AND profile_id = ?",
+                          (extraction_id, self.active_profile_id))
+            # Then delete the extraction record
+            cursor.execute("DELETE FROM extraction WHERE id = ? AND profile_id = ?",
+                          (extraction_id, self.active_profile_id))
+
+            affected_rows = cursor.rowcount
+            conn.commit()
+            return affected_rows
+        finally:
+            if conn:
+                conn.close()
+
+    def get_extraction_attributes_by_extraction_id(self, extraction_id: int) -> List[ExtractionAttribute]:
+        """
+        Get all attributes for a specific extraction record.
+
+        Args:
+            extraction_id: ID of the extraction record
+
+        Returns:
+            List of ExtractionAttribute objects
+        """
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id, extraction_id, "key", value, profile_id
+                FROM ext_attribute
+                WHERE extraction_id = ? AND profile_id = ?
+                ORDER BY id
+            """, (extraction_id, self.active_profile_id))
+
+            rows = cursor.fetchall()
+            data = [
+                ExtractionAttribute(
+                    id=row['id'],
+                    extraction_id=row['extraction_id'],
+                    key=row['key'],
+                    value=row['value'],
+                    profile_id=row['profile_id']
+                )
+                for row in rows
+            ]
+            return data
+        finally:
+            if conn:
+                conn.close()
+
+    def get_extraction_attribute_by_id(self, attribute_id: int) -> Optional[ExtractionAttribute]:
+        """
+        Get a specific extraction attribute by its ID.
+
+        Args:
+            attribute_id: ID of the extraction attribute to retrieve
+
+        Returns:
+            ExtractionAttribute object if found, None otherwise
+        """
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id, extraction_id, "key", value, profile_id
+                FROM ext_attribute
+                WHERE id = ? AND profile_id = ?
+            """, (attribute_id, self.active_profile_id))
+
+            row = cursor.fetchone()
+            if row:
+                return ExtractionAttribute(
+                    id=row['id'],
+                    extraction_id=row['extraction_id'],
+                    key=row['key'],
+                    value=row['value'],
+                    profile_id=row['profile_id']
+                )
+            return None
+        finally:
+            if conn:
+                conn.close()
+
+    def create_extraction_attribute(self, extraction_id: int, key: str, value: str) -> int:
+        """
+        Create a new extraction attribute.
+
+        Args:
+            extraction_id: ID of the extraction record this attribute belongs to
+            key: Attribute key
+            value: Attribute value
+
+        Returns:
+            ID of the newly created extraction attribute
+        """
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO ext_attribute (extraction_id, "key", value, profile_id)
+                VALUES (?, ?, ?, ?)
+            """, (extraction_id, key, value, self.active_profile_id))
+
+            new_id = cursor.lastrowid
+            conn.commit()
+            return new_id # type: ignore
+        finally:
+            if conn:
+                conn.close()
+
+    def update_extraction_attribute(self, attribute_id: int, key: str, value: str) -> int:
+        """
+        Update an existing extraction attribute.
+
+        Args:
+            attribute_id: ID of the extraction attribute to update
+            key: New attribute key
+            value: New attribute value
+
+        Returns:
+            Number of affected rows (0 if not found, 1 if updated)
+        """
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE ext_attribute
+                SET "key" = ?, value = ?
+                WHERE id = ? AND profile_id = ?
+            """, (key, value, attribute_id, self.active_profile_id))
+
+            affected_rows = cursor.rowcount
+            conn.commit()
+            return affected_rows
+        finally:
+            if conn:
+                conn.close()
+
+    def delete_extraction_attribute(self, attribute_id: int) -> int:
+        """
+        Delete an extraction attribute.
+
+        Args:
+            attribute_id: ID of the extraction attribute to delete
+
+        Returns:
+            Number of affected rows (0 if not found, 1 if deleted)
+        """
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM ext_attribute WHERE id = ? AND profile_id = ?",
+                          (attribute_id, self.active_profile_id))
+
+            affected_rows = cursor.rowcount
+            conn.commit()
+            return affected_rows
+        finally:
+            if conn:
+                conn.close()

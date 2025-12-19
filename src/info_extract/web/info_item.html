@@ -7,13 +7,13 @@
     <!-- 引入Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- 引入Font Awesome图标 -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/7.0.1/css/all.min.css">
     <!-- 引入SweetAlert2组件 -->
     <link href="https://cdn.bootcdn.net/ajax/libs/sweetalert2/11.23.0/sweetalert2.min.css" rel="stylesheet">
     <!-- 引入Select2组件 -->
     <link href="https://cdn.bootcdn.net/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet">
     <!-- 引入Sortable.js库 -->
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script src="/static/Sortable.min.js"></script>
     <!-- 引入统一样式文件 -->
     <link href="/static/styles.css" rel="stylesheet">
 </head>
@@ -66,33 +66,9 @@
 
                 <!-- 文本标注配置 -->
                 <div class="bg-white shadow rounded-lg p-6">
-                    <h2 class="text-lg font-medium text-gray-900 mb-4"><i class="fa-solid fa-file-lines text-blue-600 mr-2"></i>文本提取样本 (Few-Shot)</h2>
-                    <p class="text-sm text-gray-500 mb-4">标注样本段落，教模型如何从文本中提取。</p>
-                    
-                    <div class="border rounded-md p-4 bg-gray-50 text-sm leading-relaxed mb-4 relative group">
-                        <!-- 模拟标注效果 -->
-                        <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button class="bg-indigo-600 text-white text-xs px-2 py-1 rounded">添加新样本</button>
-                        </div>
-                        <p>
-                            收到来自 <span class="highlight-sample" title="映射到: 客户姓名">李四</span> 的询价邮件，他想要采购一批服务器，
-                            预计总预算在 <span class="highlight-sample" title="映射到: 订单金额">50000元</span> 左右。
-                            请尽快跟进。
-                        </p>
-                    </div>
-
-                    <div class="bg-blue-50 border-l-4 border-blue-400 p-4">
-                        <div class="flex">
-                            <div class="flex-shrink-0">
-                                <i class="fa-solid fa-circle-info text-blue-400"></i>
-                            </div>
-                            <div class="ml-3">
-                                <p class="text-sm text-blue-700">
-                                    交互提示：选中上方文本中的文字，将弹出菜单选择对应的标准字段。
-                                </p>
-                            </div>
-                        </div>
-                    </div>
+                    <a href="/config/mark_extracts" class="border-indigo-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium" >
+                        <i class="fa-solid fa-file-lines text-blue-600 mr-2"></i>文本标注配置 (Few-Shot)
+                    </a>
                 </div>
             </div>
         </div>
