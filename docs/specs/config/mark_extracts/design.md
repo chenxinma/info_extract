@@ -7,7 +7,7 @@
 
 config_models.py 定义了数据模型 Example、InfoItem
 
-### 示例文本 (Example, 既有表 example)  
+### 示例文本 (Example, 既有表 example)
 存储用于标注的文本片段：
 - id: 主键，整数类型，自动递增
 - fragment: 文本片段内容，字符串类型，非空

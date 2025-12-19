@@ -231,6 +231,81 @@ CREATE TABLE profile_metadata (
                 ```
         - 把获得的所有 langextract.data.Extraction 对象 填入 langextract.data.ExampleData 对象的 extractions
 
+### 需求：划词信息项标记功能
+系统需要提供可视化界面，让用户能够对文本片段进行信息项标注，以便构建训练数据集。
+
+#### 场景：管理示例文本
+- 当用户需要管理标注用的示例文本片段时
+- 系统提供界面允许用户：
+   - 查看已有的示例文本列表
+   - 添加新的示例文本
+   - 删除不需要的示例文本
+   - 选择一个示例文本进行标注
+- 所有操作按当前Profile进行过滤和管理
+
+#### 场景：执行划词标注
+- 当用户在文本编辑区域选择一段文字并点击信息项类型按钮时
+- 系统将选中的文本替换为使用颜色或其他视觉标识的标记元素
+- 系统将此次标注记录添加到当前示例的标注集合中
+- 标注数据与当前Profile关联存储
+
+#### 场景：管理标注结果
+- 当用户需要查看或编辑标注结果时
+- 系统以表格形式展示当前示例的所有标注记录
+- 表格包括文本内容、信息项类型和属性列
+- 用户可以为选定的标注结果添加自定义属性
+
+## 架构变更
+
+### ConfigManager类
+创建新的配置管理器类来处理Profile逻辑：
+
+```python
+class ConfigManager:
+    def __init__(self, default_profile: str = "default"):
+        self.current_profile_id = self._get_profile_id(default_profile)
+        self.config_db = ConfigDB(active_profile_id=self.current_profile_id)
+
+    def get_available_profiles(self) -> List[ProfileInfo]:
+        # 获取所有可用Profile列表
+
+    def switch_profile(self, profile_id: int) -> bool:
+        # 切换到指定Profile
+
+    def get_current_profile(self) -> str:
+        # 获取当前Profile ID
+
+    def _get_profile_id(self, profile_name: str) -> int:
+        # 根据Profile名称获取ID
+
+    def reload_config(self):
+        # 重新加载配置
+```
+
+### ConfigDB类变更
+更新ConfigDB类以支持基于Profile的查询：
+
+```python
+class ConfigDB:
+    def __init__(self, db_path: str | Path = None, active_profile_id: int = 1):
+        # 支持指定活动的Profile ID
+        # 所有数据库查询将基于active_profile_id进行过滤
+        self.active_profile_id = active_profile_id
+```
+
+### 工具函数变更
+所有配置相关的工具函数需要修改以使用全局ConfigManager实例：
+
+```python
+# 全局配置管理器实例
+config_manager: ConfigManager
+
+def output_info_items() -> list[ColumnDefine]:
+    # 使用当前激活的Profile的配置
+    config_db = config_manager.config_db
+    # ... 其余逻辑
+```
+
 #### 场景：生成示例SQL
 - 当系统需要生成SQL映射示例时
 - 系统将从standard.db读取info_item表，根据当前Profile过滤

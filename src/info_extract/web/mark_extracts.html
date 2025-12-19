@@ -69,6 +69,9 @@
                 <button class="inline-flex items-center px-4 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none" id="save-extraction-btn">
                     <i class="fa-solid fa-save mr-2"></i> 保存
                 </button>
+                <button class="inline-flex items-center px-4 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700 focus:outline-none" id="reset-extraction-btn">
+                    <i class="fa-solid fa-undo mr-2"></i> 重置
+                </button>
             </div>
         </div>
     </div>
@@ -898,6 +901,41 @@
             }
         }
 
+        // ========== 重置功能 ==========
+        function resetEditor() {
+            if (confirm('确定要重置吗？这将清空当前编辑内容和标注结果。')) {
+                // 清空文本区域的内容
+                textArea.innerHTML = '';
+
+                // 重置全局变量
+                selectedRange = null;
+                selectedText = '';
+                infoItemRecord = [];
+                placeholderMap.clear();
+                currentExampleId = null;
+                extractions = [];
+                selectedExtraction = null;
+
+                // 重置信息项按钮状态
+                infoItemBtns.forEach(btn => {
+                    btn.disabled = true;
+                    btn.classList.add('disabled');
+                });
+
+                // 清空属性输入框
+                attrKeyInput.value = '';
+                attrValueInput.value = '';
+
+                // 重新渲染提取结果表格
+                renderExtractions();
+
+                // 重新设置示例列表
+                updateExampleList();
+
+                showSuccess('页面已重置，可以开始创建新的示例');
+            }
+        }
+
         // 绑定取消标定功能到span元素右键菜单（可选）
         textArea.addEventListener('contextmenu', function(e) {
             if (e.target.tagName === 'SPAN' && e.target.hasAttribute('data-text')) {
@@ -912,6 +950,7 @@
         document.addEventListener('DOMContentLoaded', async function() {
             saveExtractionBtn.addEventListener('click', saveExtractions);
             addAttrBtn.addEventListener('click', addAttribute);
+            document.getElementById('reset-extraction-btn').addEventListener('click', resetEditor);
 
             // 初始化页面
             await loadExamples();
