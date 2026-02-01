@@ -1,6 +1,7 @@
 import os
 import unittest
 
+from info_extract.config.profile_manager import ProfileManager
 from info_extract.source import EMLReader, MSGReader
 
 class TestEmailReader(unittest.IsolatedAsyncioTestCase):
@@ -23,11 +24,12 @@ class TestEmailReader(unittest.IsolatedAsyncioTestCase):
         self._clean_processing_dir()
         self.eml_reader = EMLReader(source_dir='./source', processing_dir='./processing')
         self.msg_reader = MSGReader(source_dir='./source', processing_dir='./processing')
+        self.profile = ProfileManager()
         
 
     @unittest.skip("跳过EMLReader测试")
     async def test_eml_reader(self):
-        async for _ in self.eml_reader.run():
+        async for _ in self.eml_reader.run(self.profile):
             pass
         excel_files = []
         for root, _, files in os.walk('./processing'):
@@ -37,7 +39,7 @@ class TestEmailReader(unittest.IsolatedAsyncioTestCase):
         assert len(excel_files) > 0, "未能正确提取Excel文件"
     
     async def test_msg_reader(self):
-        async for _ in self.msg_reader.run():
+        async for _ in self.msg_reader.run(self.profile):
             pass
         excel_files = []
         for root, _, files in os.walk('./processing'):

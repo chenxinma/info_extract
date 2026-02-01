@@ -27,6 +27,8 @@ dependencies = [
     "torch>=2.9.1",
     "transformers>=4.57.1",
     "xlrd>=2.0.2",
+    "pillow>=12.1.0",
+    "pywin32>=311",
 ]
 
 [tool.setuptools.packages.find]
