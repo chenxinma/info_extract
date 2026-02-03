@@ -17,18 +17,9 @@ class TestExcelToPng(unittest.TestCase):
     def setUp(self):
         """设置测试环境"""
         # 创建临时目录
-        self.temp_dir = r"D:\tmp\work\form"
-        
-        self.test_excel_path = os.path.join(self.temp_dir, "test1.xls")
-        self.test_png_path = os.path.join(self.temp_dir, "test1.png")
-
-    def tearDown(self):
-        """清理测试环境"""
-        # 删除生成的测试文件
-        # for file_path in [self.test_png_path]:
-        #     if os.path.exists(file_path):
-        #         os.remove(file_path)
-        pass
+        self.temp_dir = Path(__file__).parent / "files"        
+        self.test_excel_path = self.temp_dir / "test1.xls"
+        self.test_png_path = self.temp_dir / "test1.png"
 
     def test_excel_to_png_basic_conversion(
         self

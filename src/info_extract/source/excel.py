@@ -10,7 +10,7 @@ import pandas as pd
 
 from ..pipeline import Step, StepResult
 from ..config.profile_manager import ProfileManager
-from ..utils import classify_excel_sheets, excel_to_png_via_com
+from ..utils import classify_excel_sheets, excel_to_png_via_com, recognize_image
 
 logger = logging.getLogger(__name__)
 warnings.simplefilter("ignore", category=UserWarning)
@@ -76,6 +76,35 @@ class ExcelReader(Step):
                     data_sheets.append(sheet["original"]["sheet_name"])
                 elif sheet_type == "Form":
                     form_sheets.append(sheet["original"]["sheet_name"])
+            
+            if len(form_sheets) > 0:
+                for sheet_name in form_sheets:
+                    fname = f"{excel_file.stem}_{sheet_name}"
+                    sheet_png = self.processing_dir / f"{excel_file.stem}_{sheet_name}.png"
+                    try:
+                        excel_to_png_via_com(excel_file, sheet_png, sheet_name)
+                    except Exception as exp:
+                        logger.warning(f"转换sheet {sheet_name} 为png异常 {str(exp)}")
+                        continue
+                    try:
+                        result = await recognize_image(str(sheet_png))
+                    except Exception as exp:
+                        logger.warning(f"识别sheet {sheet_name} 异常 {str(exp)}")
+                        continue
+                    df = result.to_pandas()
+                    if df is None:
+                        continue
+                    n_rows = len(df)
+                    meta = SheetMeta(
+                        sheet_name=fname,
+                        header_row=0,
+                        columns=list(df.columns),
+                        sample_data=[],
+                    )
+                    self.meta_list.append(meta)
+                    parquet_file = self.processing_dir / f"{fname}.parquet"
+                    df.to_parquet(parquet_file, index=False)
+                    yield str(parquet_file), excel_file.stem
 
             try:
                 book = load_workbook(str(excel_file))

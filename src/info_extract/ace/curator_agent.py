@@ -2,7 +2,7 @@ import textwrap
 
 from pydantic_ai import Agent, FunctionToolset
 
-from .model import qwen
+from ..utils.model import qwen
 from .playbook import PlaybookManager
 from .reflector_agent import Reflection
 

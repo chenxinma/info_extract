@@ -11,7 +11,7 @@ from pydantic_ai.providers.openai import OpenAIProvider
 
 from .playbook import PlaybookManager
 
-from .model import qwen
+from ..utils.model import qwen
 
 class PlaybookEvaluation(BaseModel):
     bullet_id: str = Field(description="文件序号")
